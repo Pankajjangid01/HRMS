@@ -1,0 +1,40 @@
+.user-menu {
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 10px 20px;
+
+    background: white;
+
+    border-bottom:
+        1px solid #d8dde6;
+}
+
+.user-details {
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+}
+
+.avatar {
+
+    width: 40px;
+    height: 40px;
+
+    border-radius: 50%;
+}
+
+.user-name {
+
+    font-weight: bold;
+}
+
+.profile-name {
+
+    color: gray;
+    font-size: 12px;
+}

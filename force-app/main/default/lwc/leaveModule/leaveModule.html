@@ -1,0 +1,121 @@
+<template>
+    <div class="leave-container">
+
+        <!-- Loading -->
+        <template if:true={isLoading}>
+            <lightning-spinner
+                alternative-text="Loading"
+                size="medium">
+            </lightning-spinner>
+        </template>
+
+        <template if:false={isLoading}>
+
+            <!-- Leave Balance Section -->
+            <lightning-card title="My Leave Balance">
+                <template if:true={leaveBalances}>
+                    <template for:each={leaveBalances}
+                        for:item="balance">
+                        <div key={balance.Id} class="balance-item">
+                            <span>{balance.Leave_Type__c}</span> |
+                            <span>Total: {balance.Total_Leaves__c}</span> |
+                            <span>Used: {balance.Used_Leaves__c}</span> |
+                            <span>Remaining: {balance.Remaining_Leaves__c}</span>
+                        </div>
+                    </template>
+                </template>
+            </lightning-card>
+
+            <!-- Apply Leave Section -->
+            <lightning-card title="Apply Leave">
+
+                <div class="form-section">
+
+                    <!-- Leave Type -->
+                    <lightning-combobox
+                        label="Leave Type"
+                        value={leaveType}
+                        options={leaveTypeOptions}
+                        onchange={handleLeaveTypeChange}>
+                    </lightning-combobox>
+
+                    <!-- Start Date -->
+                    <lightning-input
+                        type="date"
+                        label="Start Date"
+                        value={startDate}
+                        onchange={handleStartDateChange}>
+                    </lightning-input>
+
+                    <!-- End Date -->
+                    <lightning-input
+                        type="date"
+                        label="End Date"
+                        value={endDate}
+                        onchange={handleEndDateChange}>
+                    </lightning-input>
+
+                    <!-- Number of Days -->
+                    <template if:true={numberOfDays}>
+                        <p>Number of Days: {numberOfDays}</p>
+                    </template>
+
+                    <!-- Reason -->
+                    <lightning-textarea
+                        label="Reason"
+                        value={reason}
+                        onchange={handleReasonChange}>
+                    </lightning-textarea>
+
+                    <!-- Submit Button -->
+                    <lightning-button
+                        label="Apply Leave"
+                        variant="brand"
+                        onclick={handleApplyLeave}>
+                    </lightning-button>
+
+                </div>
+
+            </lightning-card>
+
+            <!-- Leave History Section -->
+            <lightning-card title="My Leave Requests">
+                <template if:true={leaveRequests}>
+                    <template for:each={leaveRequests} for:item="request">
+                        <div key={request.Id} class="request-item">
+                            <span>{request.Leave_Type__c}</span> |
+                            <span>{request.Start_Date__c}</span> to
+                            <span>{request.End_Date__c}</span> |
+                            <span>{request.Number_Of_Days__c} days</span> |
+                            <span>{request.Status__c}</span>
+                            <template if:true={request.canCancel}>
+                                <lightning-button
+                                    label="Cancel"
+                                    variant="destructive"
+                                    data-id={request.Id}
+                                    onclick={handleCancelLeave}>
+                                </lightning-button>
+                            </template>
+                        </div>
+                    </template>
+                </template>
+                <template if:false={leaveRequests}>
+                    <p>No leave requests found.</p>
+                </template>
+            </lightning-card>
+            <template if:true={successMessage}>
+                <div class="success-box">
+                    <p>{successMessage}</p>
+                </div>
+            </template>
+
+            <!-- Error Message -->
+            <template if:true={errorMessage}>
+                <div class="error-box">
+                    <p>{errorMessage}</p>
+                </div>
+            </template>
+        </template>
+
+    </div>
+</template>

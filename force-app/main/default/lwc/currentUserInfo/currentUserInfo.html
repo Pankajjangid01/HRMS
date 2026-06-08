@@ -1,0 +1,28 @@
+<template>
+
+    <template if:false={isGuestUser}>
+
+        <div class="user-menu">
+
+            <img src={photoUrl}
+                 class="avatar"/>
+
+            <div class="user-details">
+
+                <p>{userName}</p>
+
+                <p>{profileName}</p>
+
+            </div>
+
+            <lightning-button
+                label="Logout"
+                variant="destructive"
+                onclick={handleLogout}>
+            </lightning-button>
+
+        </div>
+
+    </template>
+
+</template>

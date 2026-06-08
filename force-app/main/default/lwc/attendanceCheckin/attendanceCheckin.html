@@ -1,0 +1,78 @@
+<template>
+    <div class="attendance-container">
+
+        <!-- Loading -->
+        <template if:true={isLoading}>
+            <div class="loading">
+                <lightning-spinner
+                    alternative-text="Loading"
+                    size="medium">
+                </lightning-spinner>
+            </div>
+        </template>
+
+        <!-- Error -->
+        <template if:true={hasError}>
+            <div class="error-message">
+                <p>{error}</p>
+            </div>
+        </template>
+
+        <!-- Attendance Card -->
+        <template if:false={isLoading}>
+            <lightning-card title="My Attendance">
+
+                <!-- Date -->
+                <div class="date-section">
+                    <p>Date: {todayDate}</p>
+                </div>
+
+                <!-- Status -->
+                <template if:true={hasCheckedIn}>
+                    <div class="status-section">
+                        <p>Check In: {checkInTime}</p>
+                        <template if:true={hasCheckedOut}>
+                            <p>Check Out: {checkOutTime}</p>
+                            <p>Working Hours: {workingHours}</p>
+                            <p>Status: {attendanceStatus}</p>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Buttons -->
+                <div class="button-section">
+
+                    <!-- Check In Button -->
+                    <template if:false={hasCheckedIn}>
+                        <lightning-button
+                            label="Check In"
+                            variant="success"
+                            onclick={handleCheckIn}>
+                        </lightning-button>
+                    </template>
+
+                    <!-- Check Out Button -->
+                    <template if:true={hasCheckedIn}>
+                        <template if:false={hasCheckedOut}>
+                            <lightning-button
+                                label="Check Out"
+                                variant="destructive"
+                                onclick={handleCheckOut}>
+                            </lightning-button>
+                        </template>
+                    </template>
+
+                    <!-- Done Message -->
+                    <template if:true={hasCheckedOut}>
+                        <p class="done-message">
+                            ✅ Attendance marked for today
+                        </p>
+                    </template>
+
+                </div>
+
+            </lightning-card>
+        </template>
+
+    </div>
+</template>

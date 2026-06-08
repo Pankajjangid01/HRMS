@@ -1,0 +1,173 @@
+<template>
+    <div class="expense-container">
+
+        <!-- Loading -->
+        <template if:true={isLoading}>
+            <lightning-spinner
+                alternative-text="Loading"
+                size="medium">
+            </lightning-spinner>
+        </template>
+
+        <template if:false={isLoading}>
+
+            <!-- Error Message -->
+            <template if:true={errorMessage}>
+                <div class="error-box">
+                    <p>{errorMessage}</p>
+                </div>
+            </template>
+
+            <!-- Success Message -->
+            <template if:true={successMessage}>
+                <div class="success-box">
+                    <p>{successMessage}</p>
+                </div>
+            </template>
+
+            <!-- Expense Form -->
+            <lightning-card title="New Expense Claim">
+
+                <!-- Claim Title -->
+                <lightning-input
+                    label="Claim Title"
+                    value={claimTitle}
+                    onchange={handleClaimTitleChange}
+                    required>
+                </lightning-input>
+
+                <!-- Expense Date -->
+                <lightning-input
+                    type="date"
+                    label="Expense Date"
+                    value={expenseDate}
+                    onchange={handleExpenseDateChange}
+                    required>
+                </lightning-input>
+
+                <!-- Remarks -->
+                <lightning-textarea
+                    label="Remarks"
+                    value={remarks}
+                    onchange={handleRemarksChange}>
+                </lightning-textarea>
+
+                <!-- Line Items -->
+                <div class="line-items-section">
+                    <h3>Line Items</h3>
+
+                    <template for:each={lineItems}
+                        for:item="item"
+                        for:index="index">
+                        <div key={item.key}
+                            class="line-item-row">
+
+                            <!-- Category -->
+                            <lightning-combobox
+                                label="Category"
+                                value={item.category}
+                                options={categoryOptions}
+                                data-index={index}
+                                onchange={handleCategoryChange}>
+                            </lightning-combobox>
+
+                            <!-- Amount -->
+                            <lightning-input
+                                type="number"
+                                label="Amount"
+                                value={item.amount}
+                                min="1"
+                                formatter="currency"
+                                data-index={index}
+                                onchange={handleAmountChange}>
+                            </lightning-input>
+
+                            <!-- Description -->
+                            <lightning-input
+                                label="Description"
+                                value={item.description}
+                                data-index={index}
+                                onchange={handleDescriptionChange}>
+                            </lightning-input>
+
+                            <!-- Remove Button -->
+                            <lightning-button
+                                label="Remove"
+                                variant="destructive"
+                                data-index={index}
+                                onclick={handleRemoveLineItem}>
+                            </lightning-button>
+
+                        </div>
+                    </template>
+
+                    <!-- Add Line Item -->
+                    <lightning-button
+                        label="+ Add Line Item"
+                        variant="neutral"
+                        onclick={handleAddLineItem}>
+                    </lightning-button>
+
+                    <!-- Total -->
+                    <div class="total-section">
+                        <p>Total Amount: {totalAmount}</p>
+                    </div>
+
+                </div>
+
+                <!-- Receipt Upload -->
+                <div class="receipt-section">
+                    <lightning-file-upload
+                        label="Upload Receipt (Required)"
+                        name="receiptUpload"
+                        accept={acceptedFormats}
+                        record-id={dummyRecordId}
+                        onuploadfinished={handleUploadFinished}
+                        multiple="false">
+                    </lightning-file-upload>
+                    <template if:true={receiptUploaded}>
+                        <p>✅ Receipt uploaded</p>
+                    </template>
+                </div>
+
+                <!-- Submit Button -->
+                <lightning-button
+                    label="Submit Expense"
+                    variant="brand"
+                    onclick={handleSubmitExpense}>
+                </lightning-button>
+
+            </lightning-card>
+
+            <!-- Expense History -->
+            <template for:each={expenses}
+                for:item="exp">
+                <div key={exp.Id} class="expense-item">
+                    <span>{exp.Claim_Title__c}</span> |
+                    <span>{exp.Expense_Date__c}</span> |
+                    <span>Rs. {exp.Total_Amount__c}</span> |
+                    <span>{exp.Status__c}</span>
+
+                    <!-- View Receipt Button -->
+                    <lightning-button
+                        label="View Receipt"
+                        variant="neutral"
+                        data-id={exp.Id}
+                        onclick={handleViewReceipt}>
+                    </lightning-button>
+
+                    <!-- Cancel Button -->
+                    <template if:true={exp.canCancel}>
+                        <lightning-button
+                            label="Cancel"
+                            variant="destructive"
+                            data-id={exp.Id}
+                            onclick={handleCancelExpense}>
+                        </lightning-button>
+                    </template>
+                </div>
+            </template>
+        </template>
+
+    </div>
+</template>

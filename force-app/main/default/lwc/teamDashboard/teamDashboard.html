@@ -1,0 +1,51 @@
+<template>
+    <div class="team-dashboard">
+
+        <template if:true={isLoading}>
+            <lightning-spinner
+                alternative-text="Loading"
+                size="medium">
+            </lightning-spinner>
+        </template>
+
+        <template if:false={isLoading}>
+
+            <!-- Error -->
+            <template if:true={errorMessage}>
+                <div class="error-box">
+                    <p>{errorMessage}</p>
+                </div>
+            </template>
+
+            <!-- Success -->
+            <template if:true={successMessage}>
+                <div class="success-box">
+                    <p>{successMessage}</p>
+                </div>
+            </template>
+
+            <!-- My Team Info (All Users) -->
+            <template if:true={myTeamInfo}>
+                <lightning-card title="My Team">
+                    <p>Team: {myTeamInfo.teamName}</p>
+                    <p>Department: {myTeamInfo.departmentName}</p>
+                    <p>Manager: {myTeamInfo.managerName}</p>
+
+                    <h4>Team Members</h4>
+                    <template for:each={myTeamInfo.members}
+                        for:item="member">
+                        <div key={member.email}>
+                            <span>
+                                {member.firstName} 
+                                {member.lastName}
+                            </span> |
+                            <span>{member.email}</span> |
+                            <span>{member.status}</span>
+                        </div>
+                    </template>
+                </lightning-card>
+            </template>
+        </template>
+
+    </div>
+</template>
