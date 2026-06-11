@@ -1,0 +1,635 @@
+<template>
+    <div class="dashboard">
+
+        <!-- LOADING -->
+        <template if:true={isLoading}>
+            <div class="loading-overlay">
+                <lightning-spinner
+                    alternative-text="Loading"
+                    size="large">
+                </lightning-spinner>
+            </div>
+        </template>
+
+        <!-- TOAST -->
+        <template if:true={toastMessage}>
+            <div class={toastClass}>
+                <span>{toastMessage}</span>
+            </div>
+        </template>
+
+        <!-- HEADER -->
+        <div class="header-card">
+            <div class="header-left">
+                <h1>Welcome, {employeeName}</h1>
+                <div class="employee-info">
+                    <span class="badge">{userType}</span>
+                    <span>{designation}</span>
+                    <template if:true={department}>
+                        <span>📁 {department}</span>
+                    </template>
+                    <template if:true={team}>
+                        <span>👥 {team}</span>
+                    </template>
+                </div>
+            </div>
+
+            <!-- QUICK ACTIONS -->
+            <div class="header-actions">
+                <button class="btn-primary" onclick={openLeaveModal}>
+                    📅 Apply Leave
+                </button>
+                <button class="btn-secondary" onclick={openExpenseModal}>
+                    💰 Submit Expense
+                </button>
+            </div>
+
+            <!-- ATTENDANCE WIDGET -->
+            <div class="attendance-widget">
+                <div class="attendance-status">
+                    <span class="att-label">Today's Attendance</span>
+                    <span class={attendanceBadgeClass}>{attendanceStatusLabel}</span>
+                </div>
+
+                <template if:true={showCheckInButton}>
+                    <button class="btn-checkin" onclick={handleCheckIn}>
+                        ✅ Check In
+                    </button>
+                </template>
+
+                <template if:true={showCheckOutButton}>
+                    <button class="btn-checkout" onclick={handleCheckOut}>
+                        🔴 Check Out
+                    </button>
+                </template>
+
+                <div class="attendance-times">
+                    <template if:true={checkInTime}>
+                        <p>🕐 In: {checkInTime}</p>
+                    </template>
+                    <template if:true={checkOutTime}>
+                        <p>🕐 Out: {checkOutTime}</p>
+                        <p>⏱ Hours: {workingHours}</p>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div class="stats-grid">
+
+            <!-- Head HR / HR Staff -->
+            <template if:true={isHRRole}>
+                <div class="stat-card blue">
+                    <div class="stat-icon">👥</div>
+                    <h2>{stats.totalEmployees}</h2>
+                    <p>Total Employees</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <h2>{stats.presentToday}</h2>
+                    <p>Present Today</p>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">📅</div>
+                    <h2>{stats.pendingLeaves}</h2>
+                    <p>Pending Leaves</p>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">💰</div>
+                    <h2>{stats.pendingExpenses}</h2>
+                    <p>Pending Expenses</p>
+                </div>
+            </template>
+
+            <!-- HOD -->
+            <template if:true={isHOD}>
+                <div class="stat-card blue">
+                    <div class="stat-icon">👥</div>
+                    <h2>{stats.totalEmployees}</h2>
+                    <p>Dept Employees</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <h2>{stats.presentToday}</h2>
+                    <p>Present Today</p>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">📅</div>
+                    <h2>{stats.pendingLeaves}</h2>
+                    <p>Pending Leaves</p>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">💰</div>
+                    <h2>{stats.pendingExpenses}</h2>
+                    <p>Pending Expenses</p>
+                </div>
+            </template>
+
+            <!-- TEAM MANAGER -->
+            <template if:true={isManager}>
+                <div class="stat-card blue">
+                    <div class="stat-icon">👥</div>
+                    <h2>{stats.totalEmployees}</h2>
+                    <p>Team Members</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <h2>{stats.presentToday}</h2>
+                    <p>Present Today</p>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">📅</div>
+                    <h2>{stats.pendingLeaves}</h2>
+                    <p>Pending Leaves</p>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">💰</div>
+                    <h2>{stats.pendingExpenses}</h2>
+                    <p>Pending Expenses</p>
+                </div>
+            </template>
+
+            <!-- FINANCE -->
+            <template if:true={isFinance}>
+                <div class="stat-card red">
+                    <div class="stat-icon">⏳</div>
+                    <h2>{stats.pendingExpenses}</h2>
+                    <p>Pending Expenses</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <h2>{stats.approvedThisMonth}</h2>
+                    <p>Approved This Month</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">💰</div>
+                    <h2>₹{stats.totalPendingAmount}</h2>
+                    <p>Total Pending Amount</p>
+                </div>
+            </template>
+
+        </div>
+
+        <!-- MY PERSONAL SECTION (HOD + Manager) -->
+        <template if:true={showPersonalSection}>
+            <div class="section-row">
+
+                <!-- My Leave Balance -->
+                <div class="section-card half">
+                    <div class="section-header">📅 My Leave Balance</div>
+                    <template if:true={myLeaveBalance}>
+                        <div class="balance-grid">
+                            <div class="balance-item">
+                                <span class="bal-label">PTO</span>
+                                <span class="bal-val">{myLeaveBalance.PTO_Remaining__c} / {myLeaveBalance.PTO_Total__c}</span>
+                            </div>
+                            <div class="balance-item">
+                                <span class="bal-label">Sick</span>
+                                <span class="bal-val">{myLeaveBalance.Sick_Remaining__c} / {myLeaveBalance.Sick_Total__c}</span>
+                            </div>
+                            <div class="balance-item">
+                                <span class="bal-label">Bereavement</span>
+                                <span class="bal-val">{myLeaveBalance.Bereavement_Remaining__c} / {myLeaveBalance.Bereavement_Total__c}</span>
+                            </div>
+                        </div>
+                    </template>
+                    <template if:false={myLeaveBalance}>
+                        <p class="empty-text">No leave balance found</p>
+                    </template>
+                </div>
+
+                <!-- My Recent Expenses -->
+                <div class="section-card half">
+                    <div class="section-header">💰 My Recent Expenses</div>
+                    <template if:true={hasMyExpenses}>
+                        <div class="expenses-table">
+                            <div class="table-header">
+                                <div class="col-title">Claim Title</div>
+                                <div class="col-amount">Amount</div>
+                                <div class="col-status">Status</div>
+                            </div>
+                            <template for:each={myExpenses} for:item="exp">
+                                <div key={exp.Id} class="table-row">
+                                    <div class="col-title">{exp.Claim_Title__c}</div>
+                                    <div class="col-amount">₹{exp.Total_Amount__c}</div>
+                                    <div class="col-status">
+                                        <span class={exp.statusClass}>{exp.Status__c}</span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template if:false={hasMyExpenses}>
+                        <p class="empty-text">No expenses found</p>
+                    </template>
+                </div>
+
+            </div>
+
+            <!-- My Applied Leaves -->
+            <div class="section-row">
+                <div class="section-card full">
+                    <div class="section-header">📬 My Applied Leaves</div>
+                    <template if:true={hasMyLeaves}>
+                        <div class="leaves-list">
+                            <template for:each={myLeaves} for:item="lv">
+                                <div key={lv.Id} class="leave-item">
+                                    <div class="leave-details">
+                                        <span class="leave-type">{lv.Leave_Type__c}</span>
+                                        <span class="leave-dates">
+                                            {lv.Start_Date__c} to {lv.End_Date__c}
+                                        </span>
+                                    </div>
+                                    <div class="leave-meta">
+                                        <span class="days">{lv.Number_Of_Days__c} days</span>
+                                        <span class={lv.statusClass}>{lv.Status__c}</span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template if:false={hasMyLeaves}>
+                        <p class="empty-text">No leave requests yet</p>
+                    </template>
+                </div>
+            </div>
+
+        </template>
+
+        <!-- PENDING LEAVES (with Approve/Reject) -->
+        <template if:true={showApprovalSection}>
+            <div class="section-card">
+                <div class="section-header">📋 Pending Leave Requests</div>
+                <template if:true={hasLeaves}>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                                <th>Reason</th>
+                                <template if:false={isHOD}>
+                                    <th>Action</th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={paginatedLeaveRequests} for:item="leave">
+                                <tr key={leave.Id}>
+                                    <td>{leave.empName}</td>
+                                    <td>{leave.Leave_Type__c}</td>
+                                    <td>{leave.Start_Date__c}</td>
+                                    <td>{leave.End_Date__c}</td>
+                                    <td>{leave.Number_Of_Days__c}</td>
+                                    <td>{leave.Reason__c}</td>
+                                    <td>
+                                        <template if:false={isHOD}>
+                                            <!-- <button
+                                                class="btn-approve"
+                                                data-id={leave.Id}
+                                                data-type="leave"
+                                                onclick={handleApprove}>
+                                                ✅ Approve
+                                            </button>
+                                            <button
+                                                class="btn-reject"
+                                                data-id={leave.Id}
+                                                data-type="leave"
+                                                onclick={handleReject}>
+                                                ❌ Reject
+                                            </button> -->
+                                            <button
+                                                class="btn-view"
+                                                data-id={leave.Id}
+                                                onclick={handleViewApproval}>
+                                                👁 View
+                                            </button>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div class="pagination-controls">
+                        <button class="btn-page" data-page="1" onclick={handleLeaveRequestPageChange} disabled={disableLeaveFirstPrev}>First</button>
+                        <button class="btn-page" data-page={previousLeaveRequestPage} onclick={handleLeaveRequestPageChange} disabled={disableLeaveFirstPrev}>Previous</button>
+                        <span class="page-info">{currentLeavePageInfo}</span>
+                        <button class="btn-page" data-page={nextLeaveRequestPage} onclick={handleLeaveRequestPageChange} disabled={disableLeaveNextLast}>Next</button>
+                        <button class="btn-page" data-page={totalLeavePages} onclick={handleLeaveRequestPageChange} disabled={disableLeaveNextLast}>Last</button>
+                    </div>
+                </template>
+                <template if:false={hasLeaves}>
+                    <p class="empty-text">No pending leave requests</p>
+                </template>
+            </div>
+        </template>
+
+        <!-- PENDING EXPENSES (with Approve/Reject) -->
+        <template if:true={showApprovalSection}>
+            <div class="section-card">
+                <div class="section-header">💰 Pending Expense Claims</div>
+                <template if:true={hasExpenses}>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <template if:true={showActionColumn}>
+                                    <th>Action</th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={paginatedExpenses} for:item="exp">
+                                <tr key={exp.Id}>
+                                    <td>{exp.empName}</td>
+                                    <td>{exp.Claim_Title__c}</td>
+                                    <td>{exp.Expense_Date__c}</td>
+                                    <td>₹{exp.Total_Amount__c}</td>
+                                    <td>{exp.Status__c}</td>
+                                    <td>
+                                        <template if:true={showActionColumn}>
+                                            <!-- <button
+                                                class="btn-approve"
+                                                data-id={exp.Id}
+                                                data-type="expense"
+                                                onclick={handleApprove}>
+                                                ✅ Approve
+                                            </button>
+
+                                            <button
+                                                class="btn-reject"
+                                                data-id={exp.Id}
+                                                data-type="expense"
+                                                onclick={handleReject}>
+                                                ❌ Reject
+                                            </button> -->
+                                            <button
+                                                class="btn-view"
+                                                data-id={exp.Id}
+                                                onclick={handleViewApproval}>
+                                                👁 View
+                                            </button>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div class="pagination-controls">
+                        <button class="btn-page" data-page="1" onclick={handleExpensePageChange} disabled={disableExpenseFirstPrev}>First</button>
+                        <button class="btn-page" data-page={previousExpensePage} onclick={handleExpensePageChange} disabled={disableExpenseFirstPrev}>Previous</button>
+                        <span class="page-info">{currentExpensePageInfo}</span>
+                        <button class="btn-page" data-page={nextExpensePage} onclick={handleExpensePageChange} disabled={disableExpenseNextLast}>Next</button>
+                        <button class="btn-page" data-page={totalExpensePages} onclick={handleExpensePageChange} disabled={disableExpenseNextLast}>Last</button>
+                    </div>
+                </template>
+                <template if:false={hasExpenses}>
+                    <p class="empty-text">No pending expense claims</p>
+                </template>
+            </div>
+        </template>
+
+        <!-- EMPLOYEES TABLE -->
+        <template if:true={hasEmployees}>
+            <div class="section-card">
+                <div class="section-header">👥 {employeeSectionTitle}</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Team</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={paginatedEmployees} for:item="emp">
+                            <tr key={emp.Id}>
+                                <td>{emp.First_Name__c} {emp.Last_Name__c}</td>
+                                <td>{emp.Designation__c}</td>
+                                <td>{emp.teamName}</td>
+                                <td>{emp.Email__c}</td>
+                                <td>
+                                    <span class="badge-active">{emp.Status__c}</span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="pagination-controls">
+                    <button class="btn-page" data-page="1" onclick={handleEmployeePageChange} disabled={disableEmployeeFirstPrev}>First</button>
+                    <button class="btn-page" data-page={previousEmployeePage} onclick={handleEmployeePageChange} disabled={disableEmployeeFirstPrev}>Previous</button>
+                    <span class="page-info">{currentEmployeePageInfo}</span>
+                    <button class="btn-page" data-page={nextEmployeePage} onclick={handleEmployeePageChange} disabled={disableEmployeeNextLast}>Next</button>
+                    <button class="btn-page" data-page={totalEmployeePages} onclick={handleEmployeePageChange} disabled={disableEmployeeNextLast}>Last</button>
+                </div>
+            </div>
+        </template>
+
+    </div>
+
+    <!-- LEAVE MODAL -->
+    <template if:true={showLeaveModal}>
+        <div class="modal-overlay">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>📅 Apply Leave</h2>
+                    <button class="modal-close" onclick={closeLeaveModal}>✕</button>
+                </div>
+                <div class="modal-body">
+                    <template if:true={modalError}>
+                        <div class="error-banner">{modalError}</div>
+                    </template>
+                    <div class="form-group">
+                        <label>Leave Type *</label>
+                        <select onchange={handleLeaveTypeChange} class="form-select">
+                            <option value="">Select Leave Type</option>
+                            <option value="Paid Time Off">Paid Time Off</option>
+                            <option value="Sick">Sick</option>
+                            <option value="Bereavement">Bereavement</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date *</label>
+                            <input type="date" class="form-input"
+                                value={startDate}
+                                onchange={handleStartDateChange} />
+                        </div>
+                        <div class="form-group">
+                            <label>End Date *</label>
+                            <input type="date" class="form-input"
+                                value={endDate}
+                                onchange={handleEndDateChange} />
+                        </div>
+                    </div>
+                    <template if:true={numberOfDays}>
+                        <p class="days-badge">📆 {numberOfDays} day(s)</p>
+                    </template>
+                    <div class="form-group">
+                        <label>Reason *</label>
+                        <textarea class="form-textarea"
+                            value={reason}
+                            onchange={handleReasonChange}
+                            placeholder="Enter reason...">
+                        </textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick={closeLeaveModal}>Cancel</button>
+                    <button class="btn-submit" onclick={handleApplyLeave}>Apply Leave</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- EXPENSE MODAL -->
+    <template if:true={showExpenseModal}>
+        <div class="modal-overlay">
+            <div class="modal-box modal-large">
+                <div class="modal-header">
+                    <h2>💰 Submit Expense</h2>
+                    <button class="modal-close" onclick={closeExpenseModal}>✕</button>
+                </div>
+                <div class="modal-body">
+
+                    <template if:true={modalError}>
+                        <div class="error-banner">{modalError}</div>
+                    </template>
+
+                    <!-- STEP 1: Form -->
+                    <template if:false={showUploadStep}>
+                        <div class="step-indicator">
+                            <span class="step active">1. Expense Details</span>
+                            <span class="step">2. Upload Receipt</span>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Claim Title *</label>
+                                <input type="text" class="form-input"
+                                    value={claimTitle}
+                                    onchange={handleClaimTitleChange}
+                                    placeholder="Enter claim title" />
+                            </div>
+                            <div class="form-group">
+                                <label>Expense Date *</label>
+                                <input type="date" class="form-input"
+                                    value={expenseDate}
+                                    onchange={handleExpenseDateChange} />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Remarks</label>
+                            <textarea class="form-textarea"
+                                value={remarks}
+                                onchange={handleRemarksChange}
+                                placeholder="Optional remarks...">
+                            </textarea>
+                        </div>
+
+                        <div class="line-items-header">
+                            <h3>Line Items</h3>
+                            <button class="btn-add" onclick={handleAddLineItem}>+ Add Item</button>
+                        </div>
+
+                        <template for:each={lineItems} for:item="item" for:index="index">
+                            <div key={item.key} class="line-item-row">
+                                <select class="form-select"
+                                    data-index={index}
+                                    onchange={handleCategoryChange}>
+                                    <option value="">Category</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Meals">Meals</option>
+                                    <option value="Accommodation">Accommodation</option>
+                                    <option value="Medical">Medical</option>
+                                    <option value="Training">Training</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input type="number" class="form-input"
+                                    placeholder="Amount (₹)"
+                                    value={item.amount}
+                                    data-index={index}
+                                    onchange={handleAmountChange} />
+                                <input type="text" class="form-input"
+                                    placeholder="Description"
+                                    value={item.description}
+                                    data-index={index}
+                                    onchange={handleDescriptionChange} />
+                                <button class="btn-remove"
+                                    data-index={index}
+                                    onclick={handleRemoveLineItem}>✕</button>
+                            </div>
+                        </template>
+
+                        <div class="total-bar">
+                            <span>Total Amount: </span>
+                            <strong>₹ {totalAmount}</strong>
+                        </div>
+                    </template>
+
+                    <!-- STEP 2: Upload Receipt -->
+                    <template if:true={showUploadStep}>
+                        <div class="step-indicator">
+                            <span class="step done">✅ 1. Expense Details</span>
+                            <span class="step active">2. Upload Receipt</span>
+                        </div>
+
+                        <div class="upload-section">
+                            <div class="expense-summary">
+                                <p><strong>{claimTitle}</strong></p>
+                                <p>Date: {expenseDate}</p>
+                                <p>Total: ₹{totalAmount}</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Upload Receipt *</label>
+                                <lightning-file-upload
+                                    name="receiptUpload"
+                                    accept={acceptedFormats}
+                                    record-id={currentExpenseId}
+                                    onuploadfinished={handleUploadFinished}>
+                                </lightning-file-upload>
+                                <template if:true={receiptUploaded}>
+                                    <p class="upload-ok">✅ Receipt uploaded successfully!</p>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick={closeExpenseModal}>Cancel</button>
+
+                    <template if:false={showUploadStep}>
+                        <button class="btn-submit" onclick={handleCreateExpense}>
+                            Next: Upload Receipt →
+                        </button>
+                    </template>
+
+                    <template if:true={showUploadStep}>
+                        <button class="btn-back" onclick={handleBackToForm}>
+                            ← Back
+                        </button>
+                        <button class="btn-submit" onclick={handleFinalSubmit}>
+                            Submit Expense ✅
+                        </button>
+                    </template>
+                </div>
+
+            </div>
+        </div>
+    </template>
+
+</template>

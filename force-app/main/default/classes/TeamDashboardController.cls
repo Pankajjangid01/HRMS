@@ -161,15 +161,15 @@ public without sharing class TeamDashboardController {
         }
     }
     
-    // Get Team Leave Balances
+    // getTeamLeaveBalances()
     @AuraEnabled(cacheable=false)
-    public static Map<Id, List<Leave_Balance__c>>
+    public static Map<Id, Leave_Balance__c>
         getTeamLeaveBalances() {
         try {
             Employee__c currentEmp =
                 getCurrentEmployee();
             if(currentEmp == null)
-                return new Map<Id, List<Leave_Balance__c>>();
+                return new Map<Id, Leave_Balance__c>();
 
             List<Employee__c> teamEmps = [
                 SELECT Id
@@ -184,34 +184,32 @@ public without sharing class TeamDashboardController {
             }
 
             if(teamEmpIds.isEmpty())
-                return new Map<Id, List<Leave_Balance__c>>();
+                return new Map<Id, Leave_Balance__c>();
 
-            Map<Id, List<Leave_Balance__c>> balanceMap =
-                new Map<Id, List<Leave_Balance__c>>();
+            Map<Id, Leave_Balance__c> balanceMap =
+                new Map<Id, Leave_Balance__c>();
 
             for(Leave_Balance__c lb : [
                 SELECT
                     Id,
                     Employee_Leaves__c,
-                    Leave_Type__c,
-                    Total_Leaves__c,
-                    Used_Leaves__c,
-                    Remaining_Leaves__c
+                    PTO_Total__c, PTO_Used__c,
+                    PTO_Remaining__c,
+                    Sick_Total__c, Sick_Used__c,
+                    Sick_Remaining__c,
+                    Bereavement_Total__c,
+                    Bereavement_Used__c,
+                    Bereavement_Remaining__c
                 FROM Leave_Balance__c
                 WHERE Employee_Leaves__c IN :teamEmpIds
+                AND Year__c = :Date.today().year()
             ]) {
-                if(!balanceMap.containsKey(lb.Employee_Leaves__c)) {
-                    balanceMap.put(
-                        lb.Employee_Leaves__c,
-                        new List<Leave_Balance__c>()
-                    );
-                }
-                balanceMap.get(lb.Employee_Leaves__c).add(lb);
+                balanceMap.put(lb.Employee_Leaves__c, lb);
             }
 
             return balanceMap;
         } catch(Exception e) {
-            return new Map<Id, List<Leave_Balance__c>>();
+            return new Map<Id, Leave_Balance__c>();
         }
     }
     // Validate Leave Balance Before Approve
@@ -255,12 +253,13 @@ public without sharing class TeamDashboardController {
             List<Leave_Balance__c> balances = [
                 SELECT
                     Id,
-                    Remaining_Leaves__c
+                    PTO_Remaining__c,
+                    Sick_Remaining__c,
+                    Bereavement_Remaining__c
                 FROM Leave_Balance__c
                 WHERE Employee_Leaves__c =
                     :leaves[0].Employee__c
-                AND Leave_Type__c =
-                    :leaves[0].Leave_Type__c
+                AND Year__c = :Date.today().year()
                 LIMIT 1
             ];
 
@@ -270,11 +269,36 @@ public without sharing class TeamDashboardController {
                 );
             }
 
-            if(balances[0].Remaining_Leaves__c < leaves[0].Number_Of_Days__c) {
+            Decimal remaining = 0;
+
+            // Check remaining balance based on leave type
+            if(leaves[0].Leave_Type__c ==
+                'Paid Time Off') {
+
+                remaining =
+                    balances[0].PTO_Remaining__c ?? 0;
+
+            } else if(leaves[0].Leave_Type__c ==
+                'Sick') {
+
+                remaining =
+                    balances[0].Sick_Remaining__c ?? 0;
+
+            } else if(leaves[0].Leave_Type__c ==
+                'Bereavement') {
+
+                remaining =
+                    balances[0]
+                        .Bereavement_Remaining__c ?? 0;
+            }
+
+            if(remaining <
+                leaves[0].Number_Of_Days__c) {
+
                 throw new AuraHandledException(
                     'Insufficient leave balance. ' +
                     'Available: ' +
-                    balances[0].Remaining_Leaves__c +
+                    remaining +
                     ' days. Requested: ' +
                     leaves[0].Number_Of_Days__c +
                     ' days.'
@@ -357,8 +381,10 @@ public without sharing class TeamDashboardController {
                     User_Type__c,
                     Team__c,
                     Team__r.Name,
+                    Team__r.Employee__c,
                     Team__r.Employee__r.First_Name__c,
                     Team__r.Employee__r.Last_Name__c,
+                    Department__c,
                     Department__r.Name
                 FROM Employee__c
                 WHERE User__c = :UserInfo.getUserId()
@@ -366,50 +392,121 @@ public without sharing class TeamDashboardController {
                 LIMIT 1
             ];
 
-            // Get all team members
-            List<Employee__c> teamMembers = [
-                SELECT 
-                    Id,
-                    First_Name__c,
-                    Last_Name__c,
-                    Email__c,
-                    Status__c
-                FROM Employee__c
-                WHERE Team__c = :currentEmp.Team__c
-                AND Status__c = 'Active'
-            ];
+            Map<String, Object> result = new Map<String, Object>();
 
-            // Flatten members
-            List<Map<String, String>> memberList = 
-                new List<Map<String, String>>();
+            // ── HOD — Department level info ───────────────────────────────
+            if(currentEmp.User_Type__c == 'HOD') {
 
-            for(Employee__c emp : teamMembers) {
-                Map<String, String> m = 
-                    new Map<String, String>();
-                m.put('firstName', emp.First_Name__c);
-                m.put('lastName', emp.Last_Name__c);
-                m.put('email', emp.Email__c);
-                m.put('status', emp.Status__c);
-                memberList.add(m);
+                // Department ki saari teams
+                List<Team__c> deptTeams = [
+                    SELECT Id, Name
+                    FROM Team__c
+                    WHERE Department__c = :currentEmp.Department__c
+                    AND Status__c = 'Active'
+                ];
+
+                Set<Id> teamIds = new Set<Id>();
+                for(Team__c t : deptTeams) teamIds.add(t.Id);
+
+                // Department ke saare employees
+                List<Employee__c> deptMembers = new List<Employee__c>();
+                if(!teamIds.isEmpty()) {
+                    deptMembers = [
+                        SELECT 
+                            Id,
+                            First_Name__c,
+                            Last_Name__c,
+                            Email__c,
+                            Status__c,
+                            Team__r.Name
+                        FROM Employee__c
+                        WHERE Team__c IN :teamIds
+                        AND Status__c = 'Active'
+                    ];
+                }
+
+                List<Map<String, String>> memberList = 
+                    new List<Map<String, String>>();
+
+                for(Employee__c emp : deptMembers) {
+                    Map<String, String> m = new Map<String, String>();
+                    m.put('firstName', emp.First_Name__c);
+                    m.put('lastName', emp.Last_Name__c);
+                    m.put('email', emp.Email__c);
+                    m.put('status', emp.Status__c);
+                    m.put('teamName', emp.Team__r.Name);
+                    memberList.add(m);
+                }
+
+                result.put('teamName', null);
+                result.put('departmentName', currentEmp.Department__r.Name);
+                result.put('managerName', null);
+                result.put('isHOD', true);
+                result.put('members', memberList);
+
+            // ── Team Manager / Employee — Team level info ─────────────────
+            } else {
+
+                if(currentEmp.Team__c == null) {
+                    result.put('teamName', null);
+                    result.put('departmentName', null);
+                    result.put('managerName', null);
+                    result.put('isHOD', false);
+                    result.put('members', new List<Map<String, String>>());
+                    return result;
+                }
+
+                List<Employee__c> teamMembers = [
+                    SELECT 
+                        Id,
+                        First_Name__c,
+                        Last_Name__c,
+                        Email__c,
+                        Status__c
+                    FROM Employee__c
+                    WHERE Team__c = :currentEmp.Team__c
+                    AND Status__c = 'Active'
+                ];
+
+                List<Map<String, String>> memberList = 
+                    new List<Map<String, String>>();
+
+                for(Employee__c emp : teamMembers) {
+                    Map<String, String> m = new Map<String, String>();
+                    m.put('firstName', emp.First_Name__c);
+                    m.put('lastName', emp.Last_Name__c);
+                    m.put('email', emp.Email__c);
+                    m.put('status', emp.Status__c);
+                    memberList.add(m);
+                }
+
+                String managerName = '';
+                if(currentEmp.Team__r.Employee__c != null) {
+                    managerName = 
+                        (currentEmp.Team__r.Employee__r.First_Name__c != null 
+                            ? currentEmp.Team__r.Employee__r.First_Name__c 
+                            : '') 
+                        + ' ' + 
+                        (currentEmp.Team__r.Employee__r.Last_Name__c != null 
+                            ? currentEmp.Team__r.Employee__r.Last_Name__c 
+                            : '');
+                }
+
+                result.put('teamName', currentEmp.Team__r.Name);
+                result.put('departmentName', 
+                    currentEmp.Team__r != null 
+                        ? currentEmp.Team__r.Name 
+                        : null);
+                result.put('managerName', managerName.trim());
+                result.put('isHOD', false);
+                result.put('members', memberList);
             }
-
-            Map<String, Object> result = 
-                new Map<String, Object>();
-            result.put('teamName', 
-                currentEmp.Team__r.Name);
-            result.put('departmentName', 
-                currentEmp.Department__r.Name);
-            result.put('managerName',
-                currentEmp.Team__r.Employee__r.First_Name__c
-                + ' '
-                + currentEmp.Team__r.Employee__r.Last_Name__c);
-            result.put('members', memberList);
 
             return result;
 
         } catch(Exception e) {
-            System.debug('getMyTeamInfo error: ' 
-                + e.getMessage());
+            System.debug('getMyTeamInfo error: ' + e.getMessage());
+            System.debug('Line: ' + e.getLineNumber());
             return null;
         }
     }

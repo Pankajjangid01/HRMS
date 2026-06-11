@@ -1,173 +1,229 @@
 <template>
-    <div class="expense-container">
+    <div class="expense-page">
 
         <!-- Loading -->
         <template if:true={isLoading}>
-            <lightning-spinner
-                alternative-text="Loading"
-                size="medium">
-            </lightning-spinner>
+            <div class="loading-wrap">
+                <lightning-spinner
+                    alternative-text="Loading"
+                    size="medium">
+                </lightning-spinner>
+            </div>
         </template>
 
         <template if:false={isLoading}>
 
-            <!-- Error Message -->
-            <template if:true={errorMessage}>
-                <div class="error-box">
-                    <p>{errorMessage}</p>
-                </div>
-            </template>
+            <!-- Header -->
+            <div class="page-header">
+                <h2 class="page-title">My Expenses</h2>
+                <button class="btn-new-expense"
+                    onclick={openModal}>
+                    + New Expense
+                </button>
+            </div>
 
-            <!-- Success Message -->
-            <template if:true={successMessage}>
-                <div class="success-box">
-                    <p>{successMessage}</p>
-                </div>
-            </template>
-
-            <!-- Expense Form -->
-            <lightning-card title="New Expense Claim">
-
-                <!-- Claim Title -->
-                <lightning-input
-                    label="Claim Title"
-                    value={claimTitle}
-                    onchange={handleClaimTitleChange}
-                    required>
-                </lightning-input>
-
-                <!-- Expense Date -->
-                <lightning-input
-                    type="date"
-                    label="Expense Date"
-                    value={expenseDate}
-                    onchange={handleExpenseDateChange}
-                    required>
-                </lightning-input>
-
-                <!-- Remarks -->
-                <lightning-textarea
-                    label="Remarks"
-                    value={remarks}
-                    onchange={handleRemarksChange}>
-                </lightning-textarea>
-
-                <!-- Line Items -->
-                <div class="line-items-section">
-                    <h3>Line Items</h3>
-
-                    <template for:each={lineItems}
-                        for:item="item"
-                        for:index="index">
-                        <div key={item.key}
-                            class="line-item-row">
-
-                            <!-- Category -->
-                            <lightning-combobox
-                                label="Category"
-                                value={item.category}
-                                options={categoryOptions}
-                                data-index={index}
-                                onchange={handleCategoryChange}>
-                            </lightning-combobox>
-
-                            <!-- Amount -->
-                            <lightning-input
-                                type="number"
-                                label="Amount"
-                                value={item.amount}
-                                min="1"
-                                formatter="currency"
-                                data-index={index}
-                                onchange={handleAmountChange}>
-                            </lightning-input>
-
-                            <!-- Description -->
-                            <lightning-input
-                                label="Description"
-                                value={item.description}
-                                data-index={index}
-                                onchange={handleDescriptionChange}>
-                            </lightning-input>
-
-                            <!-- Remove Button -->
-                            <lightning-button
-                                label="Remove"
-                                variant="destructive"
-                                data-index={index}
-                                onclick={handleRemoveLineItem}>
-                            </lightning-button>
-
+            <!-- Expense Cards -->
+            <template if:true={hasExpenses}>
+                <div class="expense-cards-grid">
+                    <template for:each={expenses}
+                        for:item="exp">
+                        <div key={exp.Id} class="expense-card">
+                            <div class="exp-card-header">
+                                <span class="exp-title">
+                                    {exp.Claim_Title__c}
+                                </span>
+                                <span class={exp.statusClass}>
+                                    {exp.Status__c}
+                                </span>
+                            </div>
+                            <div class="exp-card-body">
+                                <div class="exp-row">
+                                    <span class="exp-label">📅 Date</span>
+                                    <span>{exp.Expense_Date__c}</span>
+                                </div>
+                                <div class="exp-row">
+                                    <span class="exp-label">💰 Amount</span>
+                                    <span class="exp-amount">
+                                        ₹{exp.Total_Amount__c}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="exp-card-footer">
+                                <button class="btn-view-receipt"
+                                    data-id={exp.Id}
+                                    onclick={handleViewReceipt}>
+                                    View Receipt
+                                </button>
+                                <template if:true={exp.canCancel}>
+                                    <button class="btn-cancel-exp"
+                                        data-id={exp.Id}
+                                        onclick={handleCancelExpense}>
+                                        Cancel
+                                    </button>
+                                </template>
+                            </div>
                         </div>
                     </template>
-
-                    <!-- Add Line Item -->
-                    <lightning-button
-                        label="+ Add Line Item"
-                        variant="neutral"
-                        onclick={handleAddLineItem}>
-                    </lightning-button>
-
-                    <!-- Total -->
-                    <div class="total-section">
-                        <p>Total Amount: {totalAmount}</p>
-                    </div>
-
-                </div>
-
-                <!-- Receipt Upload -->
-                <div class="receipt-section">
-                    <lightning-file-upload
-                        label="Upload Receipt (Required)"
-                        name="receiptUpload"
-                        accept={acceptedFormats}
-                        record-id={dummyRecordId}
-                        onuploadfinished={handleUploadFinished}
-                        multiple="false">
-                    </lightning-file-upload>
-                    <template if:true={receiptUploaded}>
-                        <p>✅ Receipt uploaded</p>
-                    </template>
-                </div>
-
-                <!-- Submit Button -->
-                <lightning-button
-                    label="Submit Expense"
-                    variant="brand"
-                    onclick={handleSubmitExpense}>
-                </lightning-button>
-
-            </lightning-card>
-
-            <!-- Expense History -->
-            <template for:each={expenses}
-                for:item="exp">
-                <div key={exp.Id} class="expense-item">
-                    <span>{exp.Claim_Title__c}</span> |
-                    <span>{exp.Expense_Date__c}</span> |
-                    <span>Rs. {exp.Total_Amount__c}</span> |
-                    <span>{exp.Status__c}</span>
-
-                    <!-- View Receipt Button -->
-                    <lightning-button
-                        label="View Receipt"
-                        variant="neutral"
-                        data-id={exp.Id}
-                        onclick={handleViewReceipt}>
-                    </lightning-button>
-
-                    <!-- Cancel Button -->
-                    <template if:true={exp.canCancel}>
-                        <lightning-button
-                            label="Cancel"
-                            variant="destructive"
-                            data-id={exp.Id}
-                            onclick={handleCancelExpense}>
-                        </lightning-button>
-                    </template>
                 </div>
             </template>
+
+            <template if:false={hasExpenses}>
+                <div class="empty-state">
+                    No expenses yet. Click "+ New Expense" to submit one.
+                </div>
+            </template>
+
         </template>
 
     </div>
+
+    <!-- ── EXPENSE MODAL ──────────────────────── -->
+    <template if:true={showModal}>
+        <div class="modal-overlay" onclick={closeModal}>
+            <div class="modal" onclick={stopProp}>
+
+                <div class="modal-header">
+                    <span>New Expense Claim</span>
+                    <button class="modal-close"
+                        onclick={closeModal}>✕</button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Claim Title *</label>
+                            <input type="text"
+                                class="form-control"
+                                value={claimTitle}
+                                onchange={handleClaimTitleChange}
+                                placeholder="e.g. Client Visit Delhi" />
+                        </div>
+                        <div class="form-group">
+                            <label>Expense Date *</label>
+                            <input type="date"
+                                class="form-control"
+                                value={expenseDate}
+                                onchange={handleExpenseDateChange} />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Remarks</label>
+                        <textarea
+                            class="form-control"
+                            rows="2"
+                            value={remarks}
+                            onchange={handleRemarksChange}
+                            placeholder="Optional notes...">
+                        </textarea>
+                    </div>
+
+                    <!-- Line Items -->
+                    <div class="line-items-header">
+                        <span class="line-items-label">
+                            Line Items
+                        </span>
+                        <button class="btn-add-line"
+                            onclick={handleAddLineItem}>
+                            + Add Item
+                        </button>
+                    </div>
+
+                    <div class="line-table">
+                        <div class="line-head">
+                            <span>Category</span>
+                            <span>Description</span>
+                            <span>Amount (₹)</span>
+                            <span></span>
+                        </div>
+                        <template for:each={lineItems}
+                            for:item="item"
+                            for:index="idx">
+                            <div key={item.key}
+                                class="line-row">
+                                <select
+                                    class="form-sm"
+                                    data-index={idx}
+                                    onchange={handleCategoryChange}>
+                                    <option value="">Select</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Meals">Meals</option>
+                                    <option value="Accommodation">Accommodation</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                    <option value="Training">Training</option>
+                                    <option value="Medical">Medical</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input type="text"
+                                    class="form-sm"
+                                    placeholder="Description"
+                                    value={item.description}
+                                    data-index={idx}
+                                    onchange={handleDescriptionChange} />
+                                <input type="number"
+                                    class="form-sm"
+                                    placeholder="0.00"
+                                    value={item.amount}
+                                    data-index={idx}
+                                    onchange={handleAmountChange} />
+                                <button
+                                    class="btn-rm-line"
+                                    data-index={idx}
+                                    onclick={handleRemoveLineItem}>
+                                    ✕
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="exp-total">
+                        Total: <strong>₹{totalAmount}</strong>
+                    </div>
+
+                    <!-- Receipt Upload -->
+                    <div class="form-group">
+                        <label>Receipt * (PDF/JPG/PNG)</label>
+                        <template if:true={receiptUploaded}>
+                            <div class="receipt-ok">
+                                ✅ Receipt uploaded
+                            </div>
+                        </template>
+                        <template if:false={receiptUploaded}>
+                            <lightning-file-upload
+                                name="receiptUpload"
+                                accept={acceptedFormats}
+                                onuploadfinished={handleUploadFinished}
+                                multiple="false">
+                            </lightning-file-upload>
+                            <p class="receipt-warn">
+                                ⚠️ Receipt is required
+                            </p>
+                        </template>
+                    </div>
+
+                    <template if:true={modalError}>
+                        <div class="modal-err">
+                            {modalError}
+                        </div>
+                    </template>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-modal-cancel"
+                        onclick={closeModal}>
+                        Cancel
+                    </button>
+                    <button class="btn-modal-submit"
+                        disabled={isSubmitDisabled}
+                        onclick={handleSubmitExpense}>
+                        Submit Expense
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </template>
+
 </template>

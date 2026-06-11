@@ -1,14 +1,27 @@
-import { LightningElement, track } from 'lwc';
-import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import getLeaveBalances from '@salesforce/apex/LeaveController.getLeaveBalances';
+import { LightningElement, track} from 'lwc';
+import getLeaveBalance from '@salesforce/apex/LeaveController.getLeaveBalance';
 import getLeaveRequests from '@salesforce/apex/LeaveController.getLeaveRequests';
 import applyLeave from '@salesforce/apex/LeaveController.applyLeave';
 import cancelLeave from '@salesforce/apex/LeaveController.cancelLeave';
-
 export default class LeaveModule extends LightningElement {
 
     @track isLoading = true;
-    @track leaveBalances = [];
+
+    @track leaveBalance = {
+
+        PTO_Total__c: 0,
+        PTO_Used__c: 0,
+        PTO_Remaining__c: 0,
+
+        Sick_Total__c: 0,
+        Sick_Used__c: 0,
+        Sick_Remaining__c: 0,
+
+        Bereavement_Total__c: 0,
+        Bereavement_Used__c: 0,
+        Bereavement_Remaining__c: 0
+    };
+
     @track leaveRequests = [];
     @track leaveType = '';
     @track startDate = '';
@@ -20,10 +33,25 @@ export default class LeaveModule extends LightningElement {
 
     get leaveTypeOptions() {
         return [
-            { label: 'Paid Time Off', value: 'Paid Time Off' },
-            { label: 'Sick', value: 'Sick' },
-            { label: 'Bereavement', value: 'Bereavement' }
+            {
+                label: 'Paid Time Off',
+                value: 'Paid Time Off'
+            },
+
+            {
+                label: 'Sick',
+                value: 'Sick'
+            },
+
+            {
+                label: 'Bereavement',
+                value: 'Bereavement'
+            }
         ];
+    }
+
+    get hasLeaveRequests() {
+        return this.leaveRequests && this.leaveRequests.length > 0;
     }
 
     connectedCallback() {
@@ -33,23 +61,47 @@ export default class LeaveModule extends LightningElement {
     loadData() {
         this.isLoading = true;
         Promise.all([
-            getLeaveBalances(),
+            getLeaveBalance(),
             getLeaveRequests()
         ])
-        .then(([balances, requests]) => {
-            this.leaveBalances = balances;
-            // canCancel property add karo
-            this.leaveRequests = requests.map(req => {
+        .then(([balance, requests]) => {
+            this.leaveBalance = balance || {
+                PTO_Total__c: 0,
+                PTO_Used__c: 0,
+                PTO_Remaining__c: 0,
+
+                Sick_Total__c: 0,
+                Sick_Used__c: 0,
+                Sick_Remaining__c: 0,
+
+                Bereavement_Total__c: 0,
+                Bereavement_Used__c: 0,
+                Bereavement_Remaining__c: 0
+            };
+            this.leaveRequests =
+                requests.map(req => {
                 return {
                     ...req,
-                    canCancel: req.Status__c === 'Draft' ||
-                            req.Status__c === 'Submitted'
+                    canCancel:req.Status__c === 'Submitted'
                 };
             });
-            this.isLoading = false;
+
         })
         .catch(error => {
-            console.error(error);
+            console.error('Load Data Error:', JSON.stringify(error));
+            let errMsg = 'Error loading leave data';
+            if(error.body) {
+                if(error.body.message) {
+                    errMsg = error.body.message;
+                } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                    errMsg = error.body.pageErrors[0].message;
+                } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                    errMsg = error.body.output.errors[0].message;
+                }
+            }
+            this.errorMessage = errMsg;
+        })
+        .finally(() => {
             this.isLoading = false;
         });
     }
@@ -76,42 +128,38 @@ export default class LeaveModule extends LightningElement {
         if(this.startDate && this.endDate) {
             const start = new Date(this.startDate);
             const end = new Date(this.endDate);
-            const diff = end - start;
-            this.numberOfDays =
-                Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+            const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            this.numberOfDays = diff > 0 ? diff : 0;
+        } else {
+            this.numberOfDays = 0;
         }
     }
 
     handleApplyLeave() {
-
-        // Reset messages
         this.errorMessage = '';
         this.successMessage = '';
-
-        // Validation
         if(!this.leaveType) {
-            this.errorMessage =
-                'Please select leave type';
+            this.errorMessage = 'Please select leave type';
             return;
         }
+
         if(!this.startDate) {
-            this.errorMessage =
-                'Please select start date';
+            this.errorMessage = 'Please select start date';
             return;
         }
+
         if(!this.endDate) {
-            this.errorMessage =
-                'Please select end date';
+            this.errorMessage = 'Please select end date';
             return;
         }
+
         if(this.numberOfDays <= 0) {
-            this.errorMessage =
-                'End date must be after start date';
+            this.errorMessage = 'End date must be after start date';
             return;
         }
+
         if(!this.reason) {
-            this.errorMessage =
-                'Please enter reason';
+            this.errorMessage = 'Please enter reason';
             return;
         }
 
@@ -123,28 +171,27 @@ export default class LeaveModule extends LightningElement {
             reason: this.reason
         })
         .then(() => {
-            this.successMessage =
-                'Leave applied successfully';
+            this.successMessage = 'Leave applied successfully';
             this.resetForm();
-            this.loadData();
+            setTimeout(() => {
+                this.loadData();
+            }, 800);
         })
         .catch(error => {
+            console.error('Leave Apply Error:', JSON.stringify(error));
             let errMsg = 'Error applying leave';
             if(error.body) {
                 if(error.body.message) {
                     errMsg = error.body.message;
-                } else if(error.body.pageErrors &&
-                    error.body.pageErrors.length > 0) {
-                    errMsg =
-                        error.body.pageErrors[0].message;
-                } else if(error.body.output &&
-                    error.body.output.errors &&
-                    error.body.output.errors.length > 0) {
-                    errMsg =
-                        error.body.output.errors[0].message;
+                } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                    errMsg = error.body.pageErrors[0].message;
+                } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                    errMsg = error.body.output.errors[0].message;
                 }
             }
             this.errorMessage = errMsg;
+        })
+        .finally(() => {
             this.isLoading = false;
         });
     }
@@ -152,49 +199,38 @@ export default class LeaveModule extends LightningElement {
     handleCancelLeave(event) {
         const leaveId = event.target.dataset.id;
         this.isLoading = true;
-        cancelLeave({ leaveId: leaveId })
+        this.errorMessage = '';
+        this.successMessage = '';
+        cancelLeave({
+            leaveId: leaveId
+        })
         .then(() => {
-            this.showToast('Success',
-                'Leave cancelled successfully',
-                'success');
+            this.successMessage = 'Leave cancelled successfully';
             this.loadData();
         })
         .catch(error => {
+            console.error('Cancel Leave Error:', JSON.stringify(error));
             let errMsg = 'Error cancelling leave';
             if(error.body) {
                 if(error.body.message) {
                     errMsg = error.body.message;
-                } else if(error.body.pageErrors &&
-                    error.body.pageErrors.length > 0) {
-                    errMsg =
-                        error.body.pageErrors[0].message;
-                } else if(error.body.output &&
-                    error.body.output.errors &&
-                    error.body.output.errors.length > 0) {
-                    errMsg =
-                        error.body.output.errors[0].message;
+                } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                    errMsg = error.body.pageErrors[0].message;
+                } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                    errMsg = error.body.output.errors[0].message;
                 }
             }
             this.errorMessage = errMsg;
+        })
+        .finally(() => {
             this.isLoading = false;
         });
     }
-
     resetForm() {
         this.leaveType = '';
         this.startDate = '';
         this.endDate = '';
         this.reason = '';
         this.numberOfDays = 0;
-    }
-
-    showToast(title, message, variant) {
-        this.dispatchEvent(
-            new ShowToastEvent({
-                title: title,
-                message: message,
-                variant: variant
-            })
-        );
     }
 }

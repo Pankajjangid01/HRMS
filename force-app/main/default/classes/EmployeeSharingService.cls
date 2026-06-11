@@ -25,7 +25,11 @@ public class EmployeeSharingService {
         List<Employee__Share> empShares    = new List<Employee__Share>();
         List<Department__Share> deptShares = new List<Department__Share>();
         List<Team__Share> teamShares       = new List<Team__Share>();
-
+        List<Attendance__Share> attShares = new List<Attendance__Share>();
+        Map<Id, Employee__c> empMap = new Map<Id, Employee__c>();
+        for(Employee__c e : employees) {
+            empMap.put(e.Id, e);
+        }
         for (Employee__c emp : employees) {
 
             // HOD fetch via Team → Department → Department Head
@@ -34,7 +38,7 @@ public class EmployeeSharingService {
             Id managerUserId = emp.Manager__r.User__c;
 
             // ── MANAGER SHARING ──────────────────────────────────────────────
-            if (managerUserId != null) {
+            if (managerUserId != null && managerUserId != emp.User__c) {
 
                 // Manager → Employee record (Edit)
                 empShares.add(makeEmployeeShare(
@@ -57,7 +61,7 @@ public class EmployeeSharingService {
             }
 
             // ── HOD SHARING ───────────────────────────────────────────────────
-            if (hodUserId != null) {
+            if (hodUserId != null && hodUserId != emp.User__c) {
 
                 // HOD → Employee record (Read)
                 empShares.add(makeEmployeeShare(
@@ -79,6 +83,38 @@ public class EmployeeSharingService {
                 }
             }
         }
+
+        List<Attendance__c> attendances = [
+            SELECT Id, Employee__c
+            FROM Attendance__c
+            WHERE Employee__c IN :employeeIds
+        ];
+
+        for(Attendance__c att : attendances) {
+            Employee__c emp = empMap.get(att.Employee__c);
+            if(emp == null) continue;
+
+            Id managerUserId = emp.Manager__r.User__c;
+            Id hodUserId =
+                emp.Team__r.Department__r.Employee__r.User__c;
+
+            // Manager → Attendance Read
+            if(managerUserId != null && managerUserId != emp.User__c) {
+                attShares.add(makeAttShare(
+                    att.Id, managerUserId, 'Read'
+                ));
+            }
+
+            // HOD → Attendance Read
+            if(hodUserId != null && hodUserId != emp.User__c) {
+                attShares.add(makeAttShare(
+                    att.Id, hodUserId, 'Read'
+                ));
+            }
+        }
+
+        if(!attShares.isEmpty())
+            Database.insert(attShares, false);
 
         if (!empShares.isEmpty())  Database.insert(empShares,  false);
         if (!deptShares.isEmpty()) Database.insert(deptShares, false);
@@ -105,6 +141,22 @@ public class EmployeeSharingService {
 
         Set<Id> deptIds = new Set<Id>();
         Set<Id> teamIds = new Set<Id>();
+        Set<Id> attIds = new Set<Id>();
+
+        for(Attendance__c a : [
+            SELECT Id FROM Attendance__c
+            WHERE Employee__c IN :employeeIds
+        ]) {
+            attIds.add(a.Id);
+        }
+
+        if(!attIds.isEmpty()) {
+            delete [
+                SELECT Id FROM Attendance__Share
+                WHERE ParentId IN :attIds
+                AND RowCause = 'Manual'
+            ];
+        }
 
         for (Employee__c e : emps) {
             if (e.Department__c != null) deptIds.add(e.Department__c);
@@ -164,6 +216,18 @@ public class EmployeeSharingService {
         s.UserOrGroupId = userId;
         s.AccessLevel   = accessLevel;
         s.RowCause      = Schema.Team__Share.RowCause.Manual;
+        return s;
+    }
+
+    private static Attendance__Share makeAttShare(
+        Id attId, Id userId, String accessLevel
+    ) {
+        Attendance__Share s = new Attendance__Share();
+        s.ParentId = attId;
+        s.UserOrGroupId = userId;
+        s.AccessLevel = accessLevel;
+        s.RowCause =
+            Schema.Attendance__Share.RowCause.Manual;
         return s;
     }
 }

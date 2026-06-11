@@ -121,6 +121,15 @@ trigger DepartmentTrigger on Department__c (before insert, before update, after 
         Set<Id> empIds = new Set<Id>();
         for (Employee__c e : [
             SELECT Id FROM Employee__c
+            WHERE Team__c IN (
+                SELECT Id FROM Team__c
+                WHERE Department__c IN :deptIds
+            )
+        ]) {
+            empIds.add(e.Id);
+        }
+        for (Employee__c e : [
+            SELECT Id FROM Employee__c
             WHERE Department__c IN :deptIds
         ]) {
             empIds.add(e.Id);

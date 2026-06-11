@@ -19,6 +19,7 @@ trigger EmployeeSharingTrigger on Employee__c (after insert, after update) {
                 employeeIds.add(emp.Id);
             }
         }
+        EmployeeUserHandler.handleUserActivation(Trigger.new,Trigger.oldMap);
     }
 
     if (!employeeIds.isEmpty()) {

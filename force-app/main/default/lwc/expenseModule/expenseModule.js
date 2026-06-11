@@ -1,41 +1,38 @@
 import { LightningElement, track } from 'lwc';
-import getExpenses from '@salesforce/apex/ExpenseController.getExpenses';
-import createExpense from '@salesforce/apex/ExpenseController.createExpense';
-import cancelExpense from '@salesforce/apex/ExpenseController.cancelExpense';
-import getReceiptUrl from '@salesforce/apex/ExpenseController.getReceiptUrl';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import getExpenses from
+    '@salesforce/apex/ExpenseController.getExpenses';
+import createExpense from
+    '@salesforce/apex/ExpenseController.createExpense';
+import attachReceiptToExpense from
+    '@salesforce/apex/ExpenseController.attachReceiptToExpense';
+import cancelExpense from
+    '@salesforce/apex/ExpenseController.cancelExpense';
+import getReceiptUrl from
+    '@salesforce/apex/ExpenseController.getReceiptUrl';
 
 export default class ExpenseModule extends LightningElement {
 
     @track isLoading = true;
+    @track showModal = false;
     @track expenses = [];
     @track claimTitle = '';
     @track expenseDate = '';
     @track remarks = '';
     @track lineItems = [];
-    @track errorMessage = '';
-    @track successMessage = '';
+    @track modalError = '';
     @track contentDocumentId = '';
     @track receiptUploaded = false;
-
-    // Dummy record id for file upload
-    // Will be replaced after expense creation
-    dummyRecordId = null;
+    @track createdExpenseId = null;
 
     get acceptedFormats() {
         return ['.pdf', '.png', '.jpg', '.jpeg'];
     }
 
-    get categoryOptions() {
-        return [
-            { label: 'Travel', value: 'Travel' },
-            { label: 'Food', value: 'Food' },
-            { label: 'Accommodation', value: 'Accommodation' },
-            { label: 'Fuel', value: 'Fuel' },
-            { label: 'Internet', value: 'Internet' },
-            { label: 'Training', value: 'Training' },
-            { label: 'Office Supplies', value: 'Office Supplies' },
-            { label: 'Other', value: 'Other' }
-        ];
+    showToast(title, message, variant = 'success') {
+        this.dispatchEvent(
+            new ShowToastEvent({ title, message, variant })
+        );
     }
 
     get totalAmount() {
@@ -46,10 +43,16 @@ export default class ExpenseModule extends LightningElement {
         return total.toFixed(2);
     }
 
+    get hasExpenses() {
+        return this.expenses && this.expenses.length > 0;
+    }
+
+    get isSubmitDisabled() {
+        return !this.receiptUploaded;
+    }
+
     connectedCallback() {
         this.loadExpenses();
-        // Add one empty line item by default
-        this.handleAddLineItem();
     }
 
     loadExpenses() {
@@ -57,10 +60,19 @@ export default class ExpenseModule extends LightningElement {
         getExpenses()
             .then(result => {
                 this.expenses = result.map(exp => {
+                    let statusClass = 'status-pill ';
+                    const s = exp.Status__c;
+                    if(s === 'Submitted') statusClass += 'submitted';
+                    else if(s === 'Approved') statusClass += 'approved';
+                    else if(s === 'Rejected') statusClass += 'rejected';
+                    else if(s === 'Cancelled') statusClass += 'cancelled';
+                    else statusClass += 'draft';
+
                     return {
                         ...exp,
-                        canCancel: exp.Status__c === 'Draft' ||
-                                   exp.Status__c === 'Submitted'
+                        statusClass,
+                        canCancel: s === 'Draft' ||
+                                   s === 'Submitted'
                     };
                 });
                 this.isLoading = false;
@@ -71,6 +83,23 @@ export default class ExpenseModule extends LightningElement {
             });
     }
 
+    // Modal Open/Close
+    openModal() {
+        this.resetForm();
+        this.handleAddLineItem();
+        this.showModal = true;
+    }
+
+    closeModal() {
+        this.showModal = false;
+        this.resetForm();
+    }
+
+    stopProp(event) {
+        event.stopPropagation();
+    }
+
+    // Form Handlers
     handleClaimTitleChange(event) {
         this.claimTitle = event.target.value;
     }
@@ -83,12 +112,11 @@ export default class ExpenseModule extends LightningElement {
         this.remarks = event.target.value;
     }
 
-    // Line Item Handlers
     handleAddLineItem() {
         this.lineItems = [
             ...this.lineItems,
             {
-                key: Date.now(),
+                key: Date.now() + Math.random(),
                 category: '',
                 amount: '',
                 description: ''
@@ -108,15 +136,9 @@ export default class ExpenseModule extends LightningElement {
         const index =
             parseInt(event.target.dataset.index);
         this.lineItems = this.lineItems.map(
-            (item, i) => {
-                if(i === index) {
-                    return {
-                        ...item,
-                        category: event.target.value
-                    };
-                }
-                return item;
-            }
+            (item, i) => i === index
+                ? { ...item, category: event.target.value }
+                : item
         );
     }
 
@@ -124,15 +146,9 @@ export default class ExpenseModule extends LightningElement {
         const index =
             parseInt(event.target.dataset.index);
         this.lineItems = this.lineItems.map(
-            (item, i) => {
-                if(i === index) {
-                    return {
-                        ...item,
-                        amount: event.target.value
-                    };
-                }
-                return item;
-            }
+            (item, i) => i === index
+                ? { ...item, amount: event.target.value }
+                : item
         );
     }
 
@@ -140,90 +156,77 @@ export default class ExpenseModule extends LightningElement {
         const index =
             parseInt(event.target.dataset.index);
         this.lineItems = this.lineItems.map(
-            (item, i) => {
-                if(i === index) {
-                    return {
-                        ...item,
-                        description: event.target.value
-                    };
-                }
-                return item;
-            }
+            (item, i) => i === index
+                ? { ...item, description: event.target.value }
+                : item
         );
     }
 
-    // Receipt Upload
+    // Step 1: Receipt Upload
+    // lightning-file-upload bina record-id ke
+    // File uploaded — documentId store karo
     handleUploadFinished(event) {
-        const uploadedFiles = event.detail.files;
-        if(uploadedFiles.length > 0) {
+        const files = event.detail.files;
+        if(files.length > 0) {
             this.contentDocumentId =
-                uploadedFiles[0].documentId;
+                files[0].documentId;
             this.receiptUploaded = true;
+            this.modalError = '';
         }
     }
 
-    // Submit Expense
+    // Step 2: Submit Expense
     handleSubmitExpense() {
+        this.modalError = '';
 
-        this.errorMessage = '';
-        this.successMessage = '';
-
-        // Validations
         if(!this.claimTitle) {
-            this.errorMessage =
-                'Please enter claim title';
+            this.modalError = 'Claim title is required';
             return;
         }
         if(!this.expenseDate) {
-            this.errorMessage =
-                'Please select expense date';
+            this.modalError = 'Expense date is required';
             return;
         }
         if(this.lineItems.length === 0) {
-            this.errorMessage =
-                'Please add at least one line item';
+            this.modalError =
+                'Add at least one line item';
             return;
         }
-        if(!this.contentDocumentId) {
-            this.errorMessage =
-                'Please upload receipt';
+        if(!this.receiptUploaded) {
+            this.modalError = 'Upload receipt first';
             return;
         }
 
         this.isLoading = true;
 
+        // Step 1: Create expense + line items
         createExpense({
             claimTitle: this.claimTitle,
             expenseDate: this.expenseDate,
             remarks: this.remarks,
             lineItemsJson: JSON.stringify(
                 this.lineItems
-            ),
-            contentDocumentId: this.contentDocumentId
+            )
+        })
+        .then(expenseId => {
+            // Step 2: Attach receipt
+            return attachReceiptToExpense({
+                expenseId: expenseId,
+                contentDocumentId:
+                    this.contentDocumentId
+            });
         })
         .then(() => {
-            this.successMessage =
-                'Expense submitted successfully';
+            this.showToast('Success', 'Expense submitted successfully!', 'success');
+            this.showModal = false;
             this.resetForm();
             this.loadExpenses();
         })
         .catch(error => {
-            let errMsg = 'Error submitting expense';
-            if(error.body) {
-                if(error.body.message) {
-                    errMsg = error.body.message;
-                } else if(error.body.pageErrors &&
-                    error.body.pageErrors.length > 0) {
-                    errMsg =
-                        error.body.pageErrors[0].message;
-                } else if(error.body.output &&
-                    error.body.output.errors &&
-                    error.body.output.errors.length > 0) {
-                    errMsg =
-                        error.body.output.errors[0].message;
-                }
-            }
-            this.errorMessage = errMsg;
+            this.modalError =
+                error.body?.message ||
+                'Error submitting expense';
+            this.showToast('Error', this.modalError, 'error');
             this.isLoading = false;
         });
     }
@@ -232,33 +235,21 @@ export default class ExpenseModule extends LightningElement {
     handleCancelExpense(event) {
         const expenseId = event.target.dataset.id;
         this.isLoading = true;
+
         cancelExpense({ expenseId: expenseId })
             .then(() => {
-                this.successMessage =
-                    'Expense cancelled successfully';
+                this.showToast('Success', 'Expense cancelled', 'success');
                 this.loadExpenses();
             })
             .catch(error => {
-            let errMsg = 'Error cancelling expense';
-            if(error.body) {
-                if(error.body.message) {
-                    errMsg = error.body.message;
-                } else if(error.body.pageErrors &&
-                    error.body.pageErrors.length > 0) {
-                    errMsg =
-                        error.body.pageErrors[0].message;
-                } else if(error.body.output &&
-                    error.body.output.errors &&
-                    error.body.output.errors.length > 0) {
-                    errMsg =
-                        error.body.output.errors[0].message;
-                }
-            }
-            this.errorMessage = errMsg;
-            this.isLoading = false;
-        });
+                const errMsg = error.body?.message ||
+                    'Error cancelling expense';
+                this.showToast('Error', errMsg, 'error');
+                this.isLoading = false;
+            });
     }
 
+    // View Receipt
     handleViewReceipt(event) {
         const expenseId = event.target.dataset.id;
         getReceiptUrl({ expenseId: expenseId })
@@ -266,18 +257,16 @@ export default class ExpenseModule extends LightningElement {
                 if(url) {
                     window.open(url, '_blank');
                 } else {
-                    this.errorMessage =
-                        'No receipt found';
+                    this.showToast('Error', 'No receipt found', 'error');
                 }
             })
             .catch(error => {
-                this.errorMessage =
+                this.showToast('Error',
                     error.body?.message ||
-                    'Error fetching receipt';
+                    'Error fetching receipt', 'error');
             });
     }
 
-    // Reset Form
     resetForm() {
         this.claimTitle = '';
         this.expenseDate = '';
@@ -285,6 +274,7 @@ export default class ExpenseModule extends LightningElement {
         this.lineItems = [];
         this.contentDocumentId = '';
         this.receiptUploaded = false;
-        this.handleAddLineItem();
+        this.modalError = '';
+        this.createdExpenseId = null;
     }
 }

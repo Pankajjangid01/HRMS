@@ -1,4 +1,4 @@
-public with sharing class ExpenseController {
+public without sharing class ExpenseController {
 
     // Wrapper class for Line Item
     public class LineItemWrapper {
@@ -54,14 +54,13 @@ public with sharing class ExpenseController {
         }
     }
 
-    // Create Expense with Line Items
+    // Create Expense with Line Items (WITHOUT file attachment)
     @AuraEnabled
     public static String createExpense(
         String claimTitle,
         String expenseDate,
         String remarks,
-        String lineItemsJson,
-        String contentDocumentId
+        String lineItemsJson
     ) {
         Employee__c emp = getCurrentEmployee();
         if(emp == null)
@@ -76,10 +75,6 @@ public with sharing class ExpenseController {
         if(String.isBlank(expenseDate))
             throw new AuraHandledException(
                 'Expense date is required');
-
-        if(String.isBlank(contentDocumentId))
-            throw new AuraHandledException(
-                'Receipt is required');
 
         // Parse Line Items
         List<LineItemWrapper> lineItems =
@@ -111,7 +106,7 @@ public with sharing class ExpenseController {
         exp.Claim_Title__c = claimTitle;
         exp.Expense_Date__c = Date.valueOf(expenseDate);
         exp.Remarks__c = remarks;
-        exp.Status__c = 'Submitted';
+        exp.Status__c = 'Draft';
 
         insert exp;
 
@@ -133,17 +128,59 @@ public with sharing class ExpenseController {
 
         insert items;
 
-        // Link Receipt to Expense
-        ContentDocumentLink cdl =
-            new ContentDocumentLink();
-        cdl.ContentDocumentId = contentDocumentId;
-        cdl.LinkedEntityId = exp.Id;
-        cdl.ShareType = 'V';
-        cdl.Visibility = 'AllUsers';
-
-        insert cdl;
-
         return exp.Id;
+    }
+
+    // Attach receipt to existing expense
+    @AuraEnabled
+    public static void attachReceiptToExpense(
+        String expenseId,
+        String contentDocumentId
+    ) {
+        try {
+            // Verify expense exists and belongs to current user
+            List<Expense__c> expenses = [
+                SELECT Id, Employee__c
+                FROM Expense__c
+                WHERE Id = :expenseId
+                LIMIT 1
+            ];
+
+            if(expenses.isEmpty())
+                throw new AuraHandledException('Expense not found');
+
+            Employee__c emp = getCurrentEmployee();
+            if(emp == null || expenses[0].Employee__c != emp.Id)
+                throw new AuraHandledException('Unauthorized access to expense');
+
+            // Link Receipt to Expense only if not already linked
+            List<ContentDocumentLink> existingLinks = [
+                SELECT Id
+                FROM ContentDocumentLink
+                WHERE ContentDocumentId = :contentDocumentId
+                AND LinkedEntityId = :expenseId
+                LIMIT 1
+            ];
+
+            if(existingLinks.isEmpty()) {
+                ContentDocumentLink cdl =
+                    new ContentDocumentLink();
+                cdl.ContentDocumentId = contentDocumentId;
+                cdl.LinkedEntityId = expenseId;
+                cdl.ShareType = 'V';
+                cdl.Visibility = 'AllUsers';
+                insert cdl;
+            }
+
+            // Update Expense status to Submitted
+            expenses[0].Status__c = 'Submitted';
+            expenses[0].Receipt_Attached__c = true;
+            update expenses[0];
+
+        } catch(DmlException de) {
+            System.debug('ERROR linking receipt: ' + de.getMessage());
+            throw new AuraHandledException('Failed to attach receipt: ' + de.getMessage());
+        }
     }
 
     // Cancel Expense
@@ -173,15 +210,29 @@ public with sharing class ExpenseController {
 
     // Get Current Employee
     private static Employee__c getCurrentEmployee() {
-        Id userId = UserInfo.getUserId();
-        List<Employee__c> emps = [
-            SELECT Id
-            FROM Employee__c
-            WHERE User__c = :userId
-            AND Status__c = 'Active'
-            LIMIT 1
-        ];
-        return emps.isEmpty() ? null : emps[0];
+        try {
+            Id userId = UserInfo.getUserId();
+            List<Employee__c> emps = [
+                SELECT Id
+                FROM Employee__c
+                WHERE User__c = :userId
+                AND Status__c = 'Active'
+                LIMIT 1
+            ];
+            
+            if(emps.isEmpty()) {
+                System.debug('ERROR: No Employee record found for User: ' + userId);
+                return null;
+            }
+            
+            return emps[0];
+        } catch(QueryException qe) {
+            System.debug('ERROR in getCurrentEmployee QueryException: ' + qe.getMessage());
+            throw new AuraHandledException('Database error: ' + qe.getMessage());
+        } catch(Exception e) {
+            System.debug('ERROR in getCurrentEmployee: ' + e.getMessage());
+            throw new AuraHandledException('Unexpected error: ' + e.getMessage());
+        }
     }
     
     // Get Receipt URL for Expense
