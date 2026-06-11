@@ -56,61 +56,63 @@
 
 .btn-new-expense:hover { background: #154360; }
 
-/* Expense Cards Grid */
-.expense-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+/* Expense List */
+.expense-list {
+    display: flex;
+    flex-direction: column;
     gap: 14px;
 }
 
-.expense-card {
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    overflow: hidden;
-    transition: box-shadow 0.2s;
-}
-
-.expense-card:hover {
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-}
-
-.exp-card-header {
-    padding: 12px 16px;
-    background: #F8F9FA;
+.expense-row {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    padding: 18px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #E5E7EB;
+    gap: 16px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.expense-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.expense-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
 }
 
 .exp-title {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
-    color: #1B3A5C;
+    color: #1b3a5c;
 }
 
-.exp-card-body {
-    padding: 12px 16px;
-}
-
-.exp-row {
+.expense-meta {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
     font-size: 13px;
-    margin-bottom: 6px;
+    color: #5d6d7e;
 }
 
-.exp-label { color: #7F8C8D; font-size: 12px; }
+.exp-amount {
+    font-weight: 700;
+    color: #1b3a5c;
+    font-size: 15px;
+}
 
-.exp-amount { font-weight: 700; color: #1B3A5C; }
-
-.exp-card-footer {
-    padding: 10px 16px;
-    border-top: 1px solid #E5E7EB;
-    background: #FAFAFA;
+.expense-actions {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .btn-view-receipt {
@@ -154,6 +156,22 @@
 .status-pill.rejected   { background: #FDEDEC; color: #922B21; }
 .status-pill.cancelled  { background: #F2F3F4; color: #7F8C8D; }
 .status-pill.draft      { background: #F4F6F7; color: #7F8C8D; }
+
+@media (max-width: 768px) {
+    .page-header,
+    .expense-row,
+    .expense-top,
+    .expense-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btn-new-expense,
+    .btn-view-receipt,
+    .btn-cancel-exp {
+        width: 100%;
+    }
+}
 
 /* Modal */
 .modal-overlay {

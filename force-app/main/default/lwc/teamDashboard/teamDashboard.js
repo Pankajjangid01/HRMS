@@ -33,6 +33,26 @@ export default class TeamDashboard extends LightningElement {
             this.teamExpenses.length > 0;
     }
 
+    get teamMemberCount() {
+        return this.myTeamInfo?.members?.length || 0;
+    }
+
+    get pendingLeaveCount() {
+        return this.teamLeaves?.length || 0;
+    }
+
+    get pendingExpenseCount() {
+        return this.teamExpenses?.length || 0;
+    }
+
+    get totalPendingExpenseAmount() {
+        const total = (this.teamExpenses || []).reduce(
+            (sum, exp) => sum + (exp.Total_Amount__c || 0),
+            0
+        );
+        return total.toFixed(2);
+    }
+
     connectedCallback() {
         this.initializeDashboard();
     }
@@ -72,7 +92,10 @@ export default class TeamDashboard extends LightningElement {
                         employeeName:
                             leave.Employee__r.First_Name__c
                             + ' '
-                            + leave.Employee__r.Last_Name__c
+                            + leave.Employee__r.Last_Name__c,
+                        statusClass: this.getStatusClass(
+                            leave.Status__c
+                        )
                     };
                 });
                 this.teamExpenses = expenses.map(exp => {
@@ -81,7 +104,10 @@ export default class TeamDashboard extends LightningElement {
                         employeeName:
                             exp.Employee__r.First_Name__c
                             + ' '
-                            + exp.Employee__r.Last_Name__c
+                            + exp.Employee__r.Last_Name__c,
+                        statusClass: this.getStatusClass(
+                            exp.Status__c
+                        )
                     };
                 });
                 this.myTeamInfo = teamInfo;
@@ -193,5 +219,21 @@ export default class TeamDashboard extends LightningElement {
                 this.isLoading = false;
             });
         }
+    }
+
+    getStatusClass(status) {
+        let cls = 'status-pill ';
+        if(status === 'Approved' ||
+            status === 'Manager Approved') {
+            cls += 'approved';
+        } else if(status === 'Rejected' ||
+            status === 'Manager Rejected') {
+            cls += 'rejected';
+        } else if(status === 'Submitted') {
+            cls += 'submitted';
+        } else {
+            cls += 'neutral';
+        }
+        return cls;
     }
 }

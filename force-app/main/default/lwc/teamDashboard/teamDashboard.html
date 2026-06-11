@@ -2,49 +2,241 @@
     <div class="team-dashboard">
 
         <template if:true={isLoading}>
-            <lightning-spinner
-                alternative-text="Loading"
-                size="medium">
-            </lightning-spinner>
+            <div class="loading-wrap">
+                <lightning-spinner
+                    alternative-text="Loading"
+                    size="medium">
+                </lightning-spinner>
+            </div>
         </template>
 
         <template if:false={isLoading}>
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">
+                        <template if:true={isManager}>Team Dashboard</template>
+                        <template if:false={isManager}>My Team</template>
+                    </h1>
+                </div>
+                <template if:true={myTeamInfo.teamName}>
+                    <div class="header-badge">
+                        <span>{myTeamInfo.teamName}</span>
+                    </div>
+                </template>
+            </div>
 
             <!-- Error -->
             <template if:true={errorMessage}>
-                <div class="error-box">
+                <div class="message-box error-box">
                     <p>{errorMessage}</p>
                 </div>
             </template>
 
             <!-- Success -->
             <template if:true={successMessage}>
-                <div class="success-box">
+                <div class="message-box success-box">
                     <p>{successMessage}</p>
                 </div>
             </template>
 
-            <!-- My Team Info (All Users) -->
             <template if:true={myTeamInfo}>
-                <lightning-card title="My Team">
-                    <p>Team: {myTeamInfo.teamName}</p>
-                    <p>Department: {myTeamInfo.departmentName}</p>
-                    <p>Manager: {myTeamInfo.managerName}</p>
+                <div class="hero-card">
+                    <div class="hero-copy">
+                        <h2>
+                            <template if:true={myTeamInfo.isHOD}>
+                                Department Overview
+                            </template>
+                            <template if:false={myTeamInfo.isHOD}>
+                                {myTeamInfo.teamName}
+                            </template>
+                        </h2>
+                        <div class="hero-meta">
+                            <template if:true={myTeamInfo.teamName}>
+                                <span>👥 {myTeamInfo.teamName}</span>
+                            </template>
+                            <template if:true={myTeamInfo.departmentName}>
+                                <span>📁 {myTeamInfo.departmentName}</span>
+                            </template>
+                            <template if:true={myTeamInfo.managerName}>
+                                <span>🧑‍💼 {myTeamInfo.managerName}</span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
 
-                    <h4>Team Members</h4>
-                    <template for:each={myTeamInfo.members}
-                        for:item="member">
-                        <div key={member.email}>
-                            <span>
-                                {member.firstName} 
-                                {member.lastName}
-                            </span> |
-                            <span>{member.email}</span> |
-                            <span>{member.status}</span>
+            <template if:true={isManager}>
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-label">Active Members</div>
+                        <div class="stat-value">{teamMemberCount}</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <div class="stat-label">Pending Leaves</div>
+                        <div class="stat-value">{pendingLeaveCount}</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-label">Pending Expenses</div>
+                        <div class="stat-value">{pendingExpenseCount}</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-label">Pending Amount</div>
+                        <div class="stat-value">₹{totalPendingExpenseAmount}</div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="content-grid">
+                <div class="section-card members-card">
+                    <div class="section-header">
+                        <h3>Team Members</h3>
+                        <span class="section-count">{teamMemberCount}</span>
+                    </div>
+                    <template if:true={teamMemberCount}>
+                        <div class="member-list">
+                            <template for:each={myTeamInfo.members}
+                                for:item="member">
+                                <div key={member.email}
+                                    class="member-row">
+                                    <div class="member-main">
+                                        <div class="member-name">
+                                            {member.firstName}
+                                            {member.lastName}
+                                        </div>
+                                        <div class="member-meta">
+                                            <span>{member.email}</span>
+                                            <template if:true={member.teamName}>
+                                                <span>{member.teamName}</span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <span class="member-status">
+                                        {member.status}
+                                    </span>
+                                </div>
+                            </template>
                         </div>
                     </template>
-                </lightning-card>
-            </template>
+                    <template if:false={teamMemberCount}>
+                        <div class="empty-state">
+                            No team members found.
+                        </div>
+                    </template>
+                </div>
+
+                <template if:true={isManager}>
+                    <div class="section-card approvals-card">
+                        <div class="section-header">
+                            <h3>Pending Leave Requests</h3>
+                            <span class="section-count">{pendingLeaveCount}</span>
+                        </div>
+                        <template if:true={hasLeaves}>
+                            <div class="request-list">
+                                <template for:each={teamLeaves}
+                                    for:item="leave">
+                                    <div key={leave.Id}
+                                        class="request-row">
+                                        <div class="request-main">
+                                            <div class="request-title-row">
+                                                <div class="request-title">
+                                                    {leave.employeeName}
+                                                </div>
+                                                <span class={leave.statusClass}>
+                                                    {leave.Status__c}
+                                                </span>
+                                            </div>
+                                            <div class="request-meta">
+                                                <span>{leave.Leave_Type__c}</span>
+                                                <span>{leave.Start_Date__c} to {leave.End_Date__c}</span>
+                                                <span>{leave.Number_Of_Days__c} day(s)</span>
+                                            </div>
+                                            <template if:true={leave.Reason__c}>
+                                                <div class="request-note">
+                                                    {leave.Reason__c}
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div class="request-actions">
+                                            <button
+                                                class="btn-approve"
+                                                data-id={leave.Id}
+                                                data-type="leave"
+                                                onclick={handleApprove}>
+                                                Approve
+                                            </button>
+                                            <button
+                                                class="btn-reject"
+                                                data-id={leave.Id}
+                                                data-type="leave"
+                                                onclick={handleReject}>
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <template if:false={hasLeaves}>
+                            <div class="empty-state">
+                                No pending leave requests right now.
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="section-card approvals-card">
+                        <div class="section-header">
+                            <h3>Pending Expense Claims</h3>
+                            <span class="section-count">{pendingExpenseCount}</span>
+                        </div>
+                        <template if:true={hasExpenses}>
+                            <div class="request-list">
+                                <template for:each={teamExpenses}
+                                    for:item="expense">
+                                    <div key={expense.Id}
+                                        class="request-row">
+                                        <div class="request-main">
+                                            <div class="request-title-row">
+                                                <div class="request-title">
+                                                    {expense.employeeName}
+                                                </div>
+                                                <span class={expense.statusClass}>
+                                                    {expense.Status__c}
+                                                </span>
+                                            </div>
+                                            <div class="request-meta">
+                                                <span>{expense.Claim_Title__c}</span>
+                                                <span>{expense.Expense_Date__c}</span>
+                                                <span>₹{expense.Total_Amount__c}</span>
+                                            </div>
+                                        </div>
+                                        <div class="request-actions">
+                                            <button
+                                                class="btn-approve"
+                                                data-id={expense.Id}
+                                                data-type="expense"
+                                                onclick={handleApprove}>
+                                                Approve
+                                            </button>
+                                            <button
+                                                class="btn-reject"
+                                                data-id={expense.Id}
+                                                data-type="expense"
+                                                onclick={handleReject}>
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <template if:false={hasExpenses}>
+                            <div class="empty-state">
+                                No pending expense claims right now.
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
         </template>
 
     </div>

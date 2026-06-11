@@ -22,33 +22,29 @@
                 </button>
             </div>
 
-            <!-- Expense Cards -->
+            <!-- Expense List -->
             <template if:true={hasExpenses}>
-                <div class="expense-cards-grid">
+                <div class="expense-list">
                     <template for:each={expenses}
                         for:item="exp">
-                        <div key={exp.Id} class="expense-card">
-                            <div class="exp-card-header">
-                                <span class="exp-title">
-                                    {exp.Claim_Title__c}
-                                </span>
-                                <span class={exp.statusClass}>
-                                    {exp.Status__c}
-                                </span>
-                            </div>
-                            <div class="exp-card-body">
-                                <div class="exp-row">
-                                    <span class="exp-label">📅 Date</span>
-                                    <span>{exp.Expense_Date__c}</span>
-                                </div>
-                                <div class="exp-row">
-                                    <span class="exp-label">💰 Amount</span>
+                        <div key={exp.Id} class="expense-row">
+                            <div class="expense-main">
+                                <div class="expense-top">
+                                    <span class="exp-title">
+                                        {exp.Claim_Title__c}
+                                    </span>
                                     <span class="exp-amount">
                                         ₹{exp.Total_Amount__c}
                                     </span>
                                 </div>
+                                <div class="expense-meta">
+                                    <span>📅 {exp.Expense_Date__c}</span>
+                                    <span class={exp.statusClass}>
+                                        {exp.Status__c}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="exp-card-footer">
+                            <div class="expense-actions">
                                 <button class="btn-view-receipt"
                                     data-id={exp.Id}
                                     onclick={handleViewReceipt}>
