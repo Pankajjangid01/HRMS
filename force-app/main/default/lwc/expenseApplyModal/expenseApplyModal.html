@@ -1,0 +1,152 @@
+<template>
+    <template if:true={isOpen}>
+        <div class="modal-overlay">
+            <div class="modal-box modal-large">
+                <div class="modal-header">
+                    <h2>💰 Submit Expense</h2>
+                    <button class="modal-close" onclick={closeModal}>✕</button>
+                </div>
+                <div class="modal-body">
+                    <template if:true={errorMessage}>
+                        <div class="error-banner">{errorMessage}</div>
+                    </template>
+
+                    <template if:false={showUploadStep}>
+                        <div class="step-indicator">
+                            <span class="step active">1. Expense Details</span>
+                            <span class="step">2. Upload Receipt</span>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Claim Title *</label>
+                                <input
+                                    type="text"
+                                    class="form-input"
+                                    value={claimTitle}
+                                    onchange={handleClaimTitleChange}
+                                    placeholder="Enter claim title"
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label>Expense Date *</label>
+                                <input
+                                    type="date"
+                                    class="form-input"
+                                    value={expenseDate}
+                                    onchange={handleExpenseDateChange}
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Remarks</label>
+                            <textarea
+                                class="form-textarea"
+                                value={remarks}
+                                onchange={handleRemarksChange}
+                                placeholder="Optional remarks..."
+                            ></textarea>
+                        </div>
+
+                        <div class="line-items-header">
+                            <h3>Line Items</h3>
+                            <button class="btn-add" onclick={handleAddLineItem}>+ Add Item</button>
+                        </div>
+
+                        <template for:each={lineItems} for:item="item" for:index="index">
+                            <div key={item.key} class="line-item-row">
+                                <select
+                                    class="form-select"
+                                    data-index={index}
+                                    onchange={handleCategoryChange}
+                                >
+                                    <option value="">Category</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Meals">Meals</option>
+                                    <option value="Accommodation">Accommodation</option>
+                                    <option value="Medical">Medical</option>
+                                    <option value="Training">Training</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input
+                                    type="number"
+                                    class="form-input"
+                                    placeholder="Amount (₹)"
+                                    value={item.amount}
+                                    data-index={index}
+                                    onchange={handleAmountChange}
+                                />
+                                <input
+                                    type="text"
+                                    class="form-input"
+                                    placeholder="Description"
+                                    value={item.description}
+                                    data-index={index}
+                                    onchange={handleDescriptionChange}
+                                />
+                                <button
+                                    class="btn-remove"
+                                    data-index={index}
+                                    onclick={handleRemoveLineItem}
+                                >✕</button>
+                            </div>
+                        </template>
+
+                        <div class="total-bar">
+                            <span>Total Amount: </span>
+                            <strong>₹ {totalAmount}</strong>
+                        </div>
+                    </template>
+
+                    <template if:true={showUploadStep}>
+                        <div class="step-indicator">
+                            <span class="step done">1. Expense Details</span>
+                            <span class="step active">2. Upload Receipt</span>
+                        </div>
+
+                        <div class="upload-section">
+                            <div class="expense-summary">
+                                <p><strong>{claimTitle}</strong></p>
+                                <p>Date: {expenseDate}</p>
+                                <p>Total: ₹{totalAmount}</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Upload Receipt *</label>
+                                <lightning-file-upload
+                                    name="receiptUpload"
+                                    accept={acceptedFormats}
+                                    record-id={currentExpenseId}
+                                    onuploadfinished={handleUploadFinished}
+                                >
+                                </lightning-file-upload>
+                                <template if:true={receiptUploaded}>
+                                    <p class="upload-ok">Receipt uploaded successfully</p>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick={closeModal}>Cancel</button>
+
+                    <template if:false={showUploadStep}>
+                        <button class="btn-submit" onclick={handleCreateExpense}>
+                            Next: Upload Receipt
+                        </button>
+                    </template>
+
+                    <template if:true={showUploadStep}>
+                        <button class="btn-back" onclick={handleBackToForm}>Back</button>
+                        <button class="btn-submit" onclick={handleFinalSubmit}>
+                            Submit Expense
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+</template>

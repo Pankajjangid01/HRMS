@@ -10,13 +10,9 @@ import doCheckIn from '@salesforce/apex/HRMSDashboardController.doCheckIn';
 import doCheckOut from '@salesforce/apex/HRMSDashboardController.doCheckOut';
 import updateLeaveStatus from '@salesforce/apex/HRMSDashboardController.updateLeaveStatus';
 import updateExpenseStatus from '@salesforce/apex/HRMSDashboardController.updateExpenseStatus';
-import deleteDraftExpense from '@salesforce/apex/HRMSDashboardController.deleteDraftExpense';
 import getMyExpenses from '@salesforce/apex/HRMSDashboardController.getMyExpenses';
 import getMyLeaves from '@salesforce/apex/HRMSDashboardController.getMyLeaves';
-import applyLeave from '@salesforce/apex/LeaveController.applyLeave';
 import getLeaveBalance from '@salesforce/apex/LeaveController.getLeaveBalance';
-import createExpense from '@salesforce/apex/ExpenseController.createExpense';
-import attachReceiptToExpense from '@salesforce/apex/ExpenseController.attachReceiptToExpense';
 import getApprovalWorkItemId from '@salesforce/apex/HRMSDashboardController.getApprovalWorkItemId';
 
 export default class HrmsDashboard extends LightningElement {
@@ -35,7 +31,6 @@ export default class HrmsDashboard extends LightningElement {
     // ── Toast ─────────────────────────────────────────────────────────────────
     @track toastMessage = '';
     @track toastType = 'success';
-    @track modalError = '';
 
     // ── Employee Info ─────────────────────────────────────────────────────────
     @track employeeName = '';
@@ -44,25 +39,6 @@ export default class HrmsDashboard extends LightningElement {
     @track team = '';
     @track userType = '';
     @track currentEmployeeId = '';
-    @track currentExpenseId = '';
-
-    // ── Leave Modal ───────────────────────────────────────────────────────────
-    @track showLeaveModal = false;
-    @track leaveType = '';
-    @track startDate = '';
-    @track endDate = '';
-    @track reason = '';
-    @track numberOfDays = 0;
-
-    // ── Expense Modal ─────────────────────────────────────────────────────────
-    @track showExpenseModal = false;
-    @track showUploadStep = false;
-    @track claimTitle = '';
-    @track expenseDate = '';
-    @track remarks = '';
-    @track lineItems = [];
-    @track contentDocumentId = '';
-    @track receiptUploaded = false;
 
     // ── Pagination ────────────────────────────────────────────────────────────
     @track currentLeaveRequestPage = 1;
@@ -375,243 +351,22 @@ console.log('isFinance => ', this.isFinance);
 
     // ── Leave Modal ───────────────────────────────────────────────────────────
     openLeaveModal() {
-        this.showLeaveModal = true;
-        this.modalError = '';
+        this.template.querySelector('c-leave-apply-modal')?.openModal();
     }
 
-    closeLeaveModal() {
-        this.showLeaveModal = false;
-        this.resetLeaveForm();
-    }
-
-    handleLeaveTypeChange(event) {
-        this.leaveType = event.target.value;
-    }
-
-    handleStartDateChange(event) {
-        this.startDate = event.target.value;
-        this.calculateDays();
-    }
-
-    handleEndDateChange(event) {
-        this.endDate = event.target.value;
-        this.calculateDays();
-    }
-
-    handleReasonChange(event) {
-        this.reason = event.target.value;
-    }
-
-    calculateDays() {
-        if (this.startDate && this.endDate) {
-            const start = new Date(this.startDate);
-            const end = new Date(this.endDate);
-            const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            this.numberOfDays = diff > 0 ? diff : 0;
-        } else {
-            this.numberOfDays = 0;
-        }
-    }
-
-    async handleApplyLeave() {
-        this.modalError = '';
-        if (!this.leaveType) { this.modalError = 'Please select leave type'; return; }
-        if (!this.startDate) { this.modalError = 'Please select start date'; return; }
-        if (!this.endDate) { this.modalError = 'Please select end date'; return; }
-        if (!this.reason) { this.modalError = 'Please enter reason'; return; }
-        if (this.numberOfDays <= 0) { this.modalError = 'End date must be after start date'; return; }
-
-        try {
-            await applyLeave({
-                leaveType: this.leaveType,
-                startDate: this.startDate,
-                endDate: this.endDate,
-                reason: this.reason
-            });
-            this.closeLeaveModal();
-            this.showToast('Leave applied successfully!');
-            await this.loadDashboard();
-        } catch (err) {
-            this.modalError = err.body?.message || 'Error applying leave';
-        }
-    }
-
-    resetLeaveForm() {
-        this.leaveType = '';
-        this.startDate = '';
-        this.endDate = '';
-        this.reason = '';
-        this.numberOfDays = 0;
-        this.modalError = '';
+    async handleLeaveApplied() {
+        this.showToast('Leave applied successfully!');
+        await this.loadDashboard();
     }
 
     // ── Expense Modal ─────────────────────────────────────────────────────────
     openExpenseModal() {
-        this.showExpenseModal = true;
-        this.showUploadStep = false;
-        this.modalError = '';
-        this.receiptUploaded = false;
-        this.currentExpenseId = '';
-        if (this.lineItems.length === 0) {
-            this.handleAddLineItem();
-        }
+        this.template.querySelector('c-expense-apply-modal')?.openModal();
     }
 
-    async closeExpenseModal() {
-        // Agar draft bana tha but receipt upload nahi hui toh delete karo
-        if (this.currentExpenseId && !this.receiptUploaded) {
-            try {
-                await deleteDraftExpense({
-                    expenseId: this.currentExpenseId
-                });
-            } catch (e) {
-                console.error('Draft delete error:', e);
-            }
-        }
-        this.showExpenseModal = false;
-        this.resetExpenseForm();
-    }
-
-    handleClaimTitleChange(event) { this.claimTitle = event.target.value; }
-    handleExpenseDateChange(event) { this.expenseDate = event.target.value; }
-    handleRemarksChange(event) { this.remarks = event.target.value; }
-
-    get acceptedFormats() {
-        return ['.pdf', '.png', '.jpg', '.jpeg'];
-    }
-
-    get totalAmount() {
-        let total = 0;
-        this.lineItems.forEach(item => {
-            total += parseFloat(item.amount) || 0;
-        });
-        return total.toFixed(2);
-    }
-
-    handleAddLineItem() {
-        this.lineItems = [...this.lineItems, {
-            key: Date.now(),
-            category: '',
-            amount: '',
-            description: ''
-        }];
-    }
-
-    handleRemoveLineItem(event) {
-        const index = parseInt(event.target.dataset.index);
-        this.lineItems = this.lineItems.filter((item, i) => i !== index);
-    }
-
-    handleCategoryChange(event) {
-        const index = parseInt(event.target.dataset.index);
-        this.lineItems = this.lineItems.map((item, i) =>
-            i === index ? { ...item, category: event.target.value } : item
-        );
-    }
-
-    handleAmountChange(event) {
-        const index = parseInt(event.target.dataset.index);
-        this.lineItems = this.lineItems.map((item, i) =>
-            i === index ? { ...item, amount: event.target.value } : item
-        );
-    }
-
-    handleDescriptionChange(event) {
-        const index = parseInt(event.target.dataset.index);
-        this.lineItems = this.lineItems.map((item, i) =>
-            i === index ? { ...item, description: event.target.value } : item
-        );
-    }
-
-    // ── Step 1: Validate + Create Expense (Draft) ─────────────────────────────
-    async handleCreateExpense() {
-        this.modalError = '';
-        if (!this.claimTitle) { this.modalError = 'Please enter claim title'; return; }
-        if (!this.expenseDate) { this.modalError = 'Please select expense date'; return; }
-        if (this.lineItems.length === 0) { this.modalError = 'Please add at least one line item'; return; }
-        if (parseFloat(this.totalAmount) <= 0) { this.modalError = 'Total amount must be greater than 0'; return; }
-
-        // Validate all line items
-        for (let i = 0; i < this.lineItems.length; i++) {
-            const item = this.lineItems[i];
-            if (!item.category) { this.modalError = `Please select category for line item ${i + 1}`; return; }
-            if (!item.amount || parseFloat(item.amount) <= 0) { this.modalError = `Please enter valid amount for line item ${i + 1}`; return; }
-        }
-
-        try {
-            const expenseId = await createExpense({
-                claimTitle: this.claimTitle,
-                expenseDate: this.expenseDate,
-                remarks: this.remarks,
-                lineItemsJson: JSON.stringify(this.lineItems)
-            });
-            this.currentExpenseId = expenseId;
-            this.showUploadStep = true;
-            this.modalError = '';
-        } catch (err) {
-            this.modalError = err.body?.message || 'Error creating expense';
-        }
-    }
-
-    // ── Step 2: File Upload Finished ──────────────────────────────────────────
-    handleUploadFinished(event) {
-        const files = event.detail.files;
-        if (files.length > 0) {
-            this.contentDocumentId = files[0].documentId;
-            this.receiptUploaded = true;
-        }
-    }
-
-    // ── Step 2: Final Submit — Attach Receipt + Mark Submitted ────────────────
-    async handleFinalSubmit() {
-        this.modalError = '';
-        if (!this.receiptUploaded || !this.contentDocumentId) {
-            this.modalError = 'Please upload a receipt first ⬆️';
-            return;
-        }
-
-        try {
-            await attachReceiptToExpense({
-                expenseId: this.currentExpenseId,
-                contentDocumentId: this.contentDocumentId
-            });
-            this.closeExpenseModal();
-            this.showToast('Expense submitted successfully! 🎉');
-            await this.loadDashboard();
-        } catch (err) {
-            this.modalError = err.body?.message || 'Error submitting expense';
-        }
-    }
-
-    // ── Back to Step 1 ────────────────────────────────────────────────────────
-    async handleBackToForm() {
-        // Delete draft created in step 1
-        if (this.currentExpenseId) {
-            try {
-                await deleteDraftExpense({
-                    expenseId: this.currentExpenseId
-                });
-            } catch (e) {
-                console.error('Draft delete error:', e);
-            }
-        }
-        this.currentExpenseId = '';
-        this.receiptUploaded = false;
-        this.contentDocumentId = '';
-        this.showUploadStep = false;
-        this.modalError = '';
-    }
-
-    resetExpenseForm() {
-        this.claimTitle = '';
-        this.expenseDate = '';
-        this.remarks = '';
-        this.lineItems = [];
-        this.contentDocumentId = '';
-        this.receiptUploaded = false;
-        this.modalError = '';
-        this.currentExpenseId = '';
-        this.showUploadStep = false;
+    async handleExpenseSubmitted() {
+        this.showToast('Expense submitted successfully! 🎉');
+        await this.loadDashboard();
     }
 
     // ── Approve / Reject ──────────────────────────────────────────────────────

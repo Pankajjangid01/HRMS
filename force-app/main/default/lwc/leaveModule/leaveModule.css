@@ -1,0 +1,195 @@
+.leave-page {
+    padding: 16px;
+    background: #f0f2f5;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.loading-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    margin: 0;
+    color: #1b3a5c;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.btn-new-leave {
+    background: #1b3a5c;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-new-leave:hover {
+    background: #154360;
+}
+
+.msg-error,
+.msg-success {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.msg-error {
+    background: #fdecec;
+    color: #922b21;
+}
+
+.msg-success {
+    background: #eafaf1;
+    color: #1e8449;
+}
+
+.leave-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.leave-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.leave-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.leave-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.leave-type {
+    color: #1b3a5c;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.leave-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    color: #5d6d7e;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.leave-reason {
+    color: #34495e;
+    font-size: 13px;
+    line-height: 1.5;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.leave-actions {
+    flex-shrink: 0;
+}
+
+.btn-cancel-leave {
+    background: #fff;
+    color: #922b21;
+    border: 1px solid #c0392b;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-cancel-leave:hover {
+    background: #fdecec;
+}
+
+.empty-state {
+    text-align: center;
+    color: #aeb6bf;
+    padding: 48px 0;
+    font-size: 14px;
+}
+
+.status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.status-pill.submitted {
+    background: #ebf5fb;
+    color: #1a5276;
+}
+
+.status-pill.approved {
+    background: #eafaf1;
+    color: #1e8449;
+}
+
+.status-pill.rejected {
+    background: #fdecec;
+    color: #922b21;
+}
+
+.status-pill.cancelled {
+    background: #f2f3f4;
+    color: #7f8c8d;
+}
+
+.status-pill.pending {
+    background: #fef5e7;
+    color: #b9770e;
+}
+
+@media (max-width: 768px) {
+    .page-header,
+    .leave-row,
+    .leave-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btn-new-leave {
+        width: 100%;
+    }
+
+    .leave-actions {
+        width: 100%;
+    }
+
+    .btn-cancel-leave {
+        width: 100%;
+    }
+}

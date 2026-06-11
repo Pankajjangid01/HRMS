@@ -1,187 +1,89 @@
 <template>
-    <div class="leave-container">
+    <div class="leave-page">
 
         <!-- Loader -->
         <template if:true={isLoading}>
-            <lightning-spinner
-                alternative-text="Loading"
-                size="medium">
-            </lightning-spinner>
+            <div class="loading-wrap">
+                <lightning-spinner
+                    alternative-text="Loading"
+                    size="medium">
+                </lightning-spinner>
+            </div>
         </template>
 
         <template if:false={isLoading}>
+            <div class="page-header">
+                <h2 class="page-title">My Leaves</h2>
+                <button class="btn-new-leave" onclick={openLeaveModal}>
+                    + Apply Leave
+                </button>
+            </div>
 
             <!-- Success Message -->
             <template if:true={successMessage}>
-                <div class="success-box">
+                <div class="msg-success">
                     <p>{successMessage}</p>
                 </div>
             </template>
 
             <!-- Error Message -->
             <template if:true={errorMessage}>
-                <div class="error-box">
+                <div class="msg-error">
                     <p>{errorMessage}</p>
                 </div>
             </template>
 
-            <!-- Leave Balance -->
-            <lightning-card title="My Leave Balance">
-
-                <div class="balance-item">
-                    <span>
-                        Paid Time Off —
-                        Total: {leaveBalance.PTO_Total__c}
-                        |
-                        Used: {leaveBalance.PTO_Used__c}
-                        |
-                        Remaining:
-                        {leaveBalance.PTO_Remaining__c}
-                    </span>
-                </div>
-
-                <div class="balance-item">
-                    <span>
-                        Sick —
-                        Total: {leaveBalance.Sick_Total__c}
-                        |
-                        Used: {leaveBalance.Sick_Used__c}
-                        |
-                        Remaining:
-                        {leaveBalance.Sick_Remaining__c}
-                    </span>
-                </div>
-
-                <div class="balance-item">
-                    <span>
-                        Bereavement —
-                        Total:
-                        {leaveBalance.Bereavement_Total__c}
-                        |
-                        Used:
-                        {leaveBalance.Bereavement_Used__c}
-                        |
-                        Remaining:
-                        {leaveBalance.Bereavement_Remaining__c}
-                    </span>
-                </div>
-
-            </lightning-card>
-
-            <!-- Apply Leave -->
-            <lightning-card title="Apply Leave">
-
-                <lightning-combobox
-                    label="Leave Type"
-                    value={leaveType}
-                    options={leaveTypeOptions}
-                    onchange={handleLeaveTypeChange}>
-                </lightning-combobox>
-
-                <lightning-input
-                    type="date"
-                    label="Start Date"
-                    value={startDate}
-                    onchange={handleStartDateChange}>
-                </lightning-input>
-
-                <lightning-input
-                    type="date"
-                    label="End Date"
-                    value={endDate}
-                    onchange={handleEndDateChange}>
-                </lightning-input>
-
-                <template if:true={numberOfDays}>
-                    <p class="days-text">
-                        Number of Days:
-                        {numberOfDays}
-                    </p>
-                </template>
-
-                <lightning-textarea
-                    label="Reason"
-                    value={reason}
-                    onchange={handleReasonChange}>
-                </lightning-textarea>
-
-                <lightning-button
-                    label="Apply Leave"
-                    variant="brand"
-                    onclick={handleApplyLeave}>
-                </lightning-button>
-
-            </lightning-card>
-
             <!-- Leave Requests -->
-            <lightning-card title="My Leave Requests">
-
-                <template if:true={hasLeaveRequests}>
-
+            <template if:true={hasLeaveRequests}>
+                <div class="leave-list">
                     <template
                         for:each={leaveRequests}
                         for:item="request">
-
                         <div
                             key={request.Id}
-                            class="request-item">
+                            class="leave-row">
+                            <div class="leave-main">
+                                <div class="leave-top">
+                                    <div class="leave-type">{request.Leave_Type__c}</div>
+                                    <span class={request.statusClass}>
+                                        {request.Status__c}
+                                    </span>
+                                </div>
+                                <div class="leave-meta">
+                                    <span>📅 {request.Start_Date__c} to {request.End_Date__c}</span>
+                                    <span>⏱ {request.Number_Of_Days__c} day(s)</span>
+                                </div>
+                                <template if:true={request.Reason__c}>
+                                    <div class="leave-reason">
+                                        {request.Reason__c}
+                                    </div>
+                                </template>
+                            </div>
 
-                            <span>
-                                {request.Leave_Type__c}
-                            </span>
-
-                            |
-
-                            <span>
-                                {request.Start_Date__c}
-                            </span>
-
-                            to
-
-                            <span>
-                                {request.End_Date__c}
-                            </span>
-
-                            |
-
-                            <span>
-                                {request.Number_Of_Days__c}
-                                days
-                            </span>
-
-                            |
-
-                            <span>
-                                {request.Status__c}
-                            </span>
-
-                            <template
-                                if:true={request.canCancel}>
-
-                                <lightning-button
-                                    label="Cancel"
-                                    variant="destructive"
-                                    data-id={request.Id}
-                                    onclick={handleCancelLeave}>
-                                </lightning-button>
-
+                            <template if:true={request.canCancel}>
+                                <div class="leave-actions">
+                                    <button
+                                        class="btn-cancel-leave"
+                                        data-id={request.Id}
+                                        onclick={handleCancelLeave}>
+                                        Cancel
+                                    </button>
+                                </div>
                             </template>
-
                         </div>
-
                     </template>
+                </div>
+            </template>
 
-                </template>
-
-                <template if:false={hasLeaveRequests}>
-                    <p class="empty-text">
-                        No leave requests found.
-                    </p>
-                </template>
-
-            </lightning-card>
+            <template if:false={hasLeaveRequests}>
+                <div class="empty-state">
+                    No leave requests yet. Click "+ Apply Leave" to submit one.
+                </div>
+            </template>
 
         </template>
+
+        <c-leave-apply-modal onsuccess={handleLeaveApplied}></c-leave-apply-modal>
 
     </div>
 </template>

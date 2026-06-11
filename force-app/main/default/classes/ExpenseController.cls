@@ -208,6 +208,31 @@ public without sharing class ExpenseController {
         update expenses[0];
     }
 
+    @AuraEnabled
+    public static void deleteDraftExpense(String expenseId) {
+        List<Expense__c> expenses = [
+            SELECT Id, Employee__c, Status__c
+            FROM Expense__c
+            WHERE Id = :expenseId
+            LIMIT 1
+        ];
+
+        if(expenses.isEmpty()) {
+            return;
+        }
+
+        Employee__c emp = getCurrentEmployee();
+        if(emp == null || expenses[0].Employee__c != emp.Id) {
+            throw new AuraHandledException('Unauthorized access to expense');
+        }
+
+        if(expenses[0].Status__c != 'Draft') {
+            return;
+        }
+
+        delete expenses[0];
+    }
+
     // Get Current Employee
     private static Employee__c getCurrentEmployee() {
         try {
