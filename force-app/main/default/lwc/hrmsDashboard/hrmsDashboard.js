@@ -135,7 +135,8 @@ console.log('isFinance => ', this.isFinance);
     }
 
     get isManager() {
-        return this.userType === 'Team Manager';
+        const role = (this.userType || '').trim().toLowerCase();
+        return role === 'manager' || role === 'team manager';
     }
 
     get isFinance() {
@@ -320,8 +321,9 @@ console.log('isFinance => ', this.isFinance);
     }
 
     get showActionColumn() {
-        return !(this.isFinance || this.isHRRole);
+        return this.isHOD;
     }
+
     showToast(message, type = 'success') {
         this.toastMessage = message;
         this.toastType = type;

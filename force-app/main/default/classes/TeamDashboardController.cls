@@ -366,8 +366,14 @@ public without sharing class TeamDashboardController {
     public static Boolean checkIsManager() {
         String roleType =
             UserInfoController.getUserRoleType();
-        return roleType == 'MANAGER' ||
-            roleType == 'HOD';
+        String normalizedRole =
+            roleType != null
+                ? roleType.trim().toLowerCase()
+                : '';
+
+        return normalizedRole == 'manager' ||
+            normalizedRole == 'team manager' ||
+            normalizedRole == 'hod';
     }
     
     @AuraEnabled(cacheable=false)
