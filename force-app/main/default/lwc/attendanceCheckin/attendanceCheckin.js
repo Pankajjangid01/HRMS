@@ -7,7 +7,6 @@ import doCheckOut from '@salesforce/apex/AttendanceController.doCheckOut';
 export default class AttendanceCheckin extends LightningElement {
 
     @track isLoading = true;
-    @track error = null;
     @track attendanceRecord = null;
 
     // Getters
@@ -50,11 +49,6 @@ export default class AttendanceCheckin extends LightningElement {
             || '';
     }
 
-    get hasError() {
-        return this.error !== null
-            && this.error !== undefined;
-    }
-    // Load today attendance on component load
     connectedCallback() {
         this.loadTodayAttendance();
     }
@@ -67,9 +61,19 @@ export default class AttendanceCheckin extends LightningElement {
                 this.isLoading = false;
             })
             .catch(error => {
-                this.error = error.body?.message
-                    || 'Error loading attendance';
+                console.error('Load Attendance Error:', JSON.stringify(error));
+                let errMsg = 'Error loading attendance';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
                 this.isLoading = false;
+                this.showToast('Error', errMsg, 'error');
             });
     }
 
@@ -87,14 +91,19 @@ export default class AttendanceCheckin extends LightningElement {
                 );
             })
             .catch(error => {
-                this.error = error.body?.message
-                    || 'Error during Check In';
+                console.error('Check In Error:', JSON.stringify(error));
+                let errMsg = 'Error during Check In';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
                 this.isLoading = false;
-                this.showToast(
-                    'Error',
-                    this.error,
-                    'error'
-                );
+                this.showToast('Error', errMsg, 'error');
             });
     }
 
@@ -112,14 +121,19 @@ export default class AttendanceCheckin extends LightningElement {
                 );
             })
             .catch(error => {
-                this.error = error.body?.message
-                    || 'Error during Check Out';
+                console.error('Check Out Error:', JSON.stringify(error));
+                let errMsg = 'Error during Check Out';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
                 this.isLoading = false;
-                this.showToast(
-                    'Error',
-                    this.error,
-                    'error'
-                );
+                this.showToast('Error', errMsg, 'error');
             });
     }
 

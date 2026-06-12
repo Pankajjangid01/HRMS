@@ -127,7 +127,7 @@ public without sharing class HRMSDashboardController {
             Date today = Date.today();
 
             // ── HEAD HR ───────────────────────────────────────────────────────
-            if(role == 'Head HR' || role == 'HR') {
+            if(role != null && role.contains('HR')) {
                 stats.put('totalEmployees', [
                     SELECT COUNT() FROM Employee__c
                 ]);
@@ -137,12 +137,13 @@ public without sharing class HRMSDashboardController {
                     AND Is_Check_In_Done__c = true
                 ]);
                 stats.put('pendingLeaves', [
-                    SELECT COUNT() FROM Leave_Request__c
-                    WHERE Status__c = 'Submitted'
+                    SELECT COUNT()
+                    FROM Leave_Request__c
+                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected')
                 ]);
                 stats.put('pendingExpenses', [
                     SELECT COUNT() FROM Expense__c
-                    WHERE Status__c = 'Submitted'
+                    WHERE Status__c Not IN ('Draft', 'Paid' , 'Cancelled', 'Rejected')
                 ]);
             }
 
@@ -289,7 +290,7 @@ public without sharing class HRMSDashboardController {
 
             String role = currentEmp.User_Type__c;
 
-            if(role == 'Head HR' || role == 'HR') {
+            if(role != null && role.contains('HR')) {
                 return [
                     SELECT Id, Name,
                         Employee__r.First_Name__c,
@@ -298,7 +299,7 @@ public without sharing class HRMSDashboardController {
                         End_Date__c, Number_Of_Days__c,
                         Status__c, Reason__c
                     FROM Leave_Request__c
-                    WHERE Status__c = 'Submitted'
+                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected')
                     ORDER BY CreatedDate DESC
                     LIMIT 50
                 ];
@@ -330,7 +331,7 @@ public without sharing class HRMSDashboardController {
                         Status__c, Reason__c
                     FROM Leave_Request__c
                     WHERE Employee__c IN :empIds
-                    AND Status__c = 'Submitted'
+                    AND Status__c IN ('Submitted', 'Manager Approved')
                     ORDER BY CreatedDate DESC
                     LIMIT 50
                 ];
@@ -372,7 +373,7 @@ public without sharing class HRMSDashboardController {
 
             String role = currentEmp.User_Type__c;
 
-            if(role == 'Head HR' || role == 'HR') {
+            if(role != null && role.contains('HR')) {
                 return [
                     SELECT Id, Name, Claim_Title__c,
                         Employee__r.First_Name__c,
@@ -380,7 +381,7 @@ public without sharing class HRMSDashboardController {
                         Expense_Date__c, Total_Amount__c,
                         Status__c, Remarks__c
                     FROM Expense__c
-                    WHERE Status__c = 'Submitted'
+                    WHERE Status__c Not IN ('Draft', 'Paid' , 'Cancelled', 'Rejected')
                     ORDER BY CreatedDate DESC
                     LIMIT 50
                 ];
@@ -497,7 +498,7 @@ public without sharing class HRMSDashboardController {
 
             String role = currentEmp.User_Type__c;
 
-            if(role == 'Head HR' || role == 'HR') {
+            if(role != null && role.contains('HR')) {
                 return [
                     SELECT Id, Name, First_Name__c, Last_Name__c,
                         Email__c, Phone__c, Designation__c,

@@ -1,4 +1,5 @@
 import { LightningElement, track} from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getLeaveRequests from '@salesforce/apex/LeaveController.getLeaveRequests';
 import cancelLeave from '@salesforce/apex/LeaveController.cancelLeave';
 export default class LeaveModule extends LightningElement {
@@ -6,8 +7,6 @@ export default class LeaveModule extends LightningElement {
     @track isLoading = true;
 
     @track leaveRequests = [];
-    @track errorMessage = '';
-    @track successMessage = '';
 
     get hasLeaveRequests() {
         return this.leaveRequests && this.leaveRequests.length > 0;
@@ -44,7 +43,7 @@ export default class LeaveModule extends LightningElement {
                     errMsg = error.body.output.errors[0].message;
                 }
             }
-            this.errorMessage = errMsg;
+            this.showToast('Error', errMsg, 'error');
         })
         .finally(() => {
             this.isLoading = false;
@@ -56,8 +55,7 @@ export default class LeaveModule extends LightningElement {
     }
 
     handleLeaveApplied() {
-        this.errorMessage = '';
-        this.successMessage = 'Leave applied successfully';
+        this.showToast('Success', 'Leave applied successfully', 'success');
         this.loadData();
     }
 
@@ -80,13 +78,11 @@ export default class LeaveModule extends LightningElement {
     handleCancelLeave(event) {
         const leaveId = event.target.dataset.id;
         this.isLoading = true;
-        this.errorMessage = '';
-        this.successMessage = '';
         cancelLeave({
             leaveId: leaveId
         })
         .then(() => {
-            this.successMessage = 'Leave cancelled successfully';
+            this.showToast('Success', 'Leave cancelled successfully', 'success');
             this.loadData();
         })
         .catch(error => {
@@ -101,10 +97,20 @@ export default class LeaveModule extends LightningElement {
                     errMsg = error.body.output.errors[0].message;
                 }
             }
-            this.errorMessage = errMsg;
+            this.showToast('Error', errMsg, 'error');
         })
         .finally(() => {
             this.isLoading = false;
         });
+    }
+
+    showToast(title, message, variant) {
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: title,
+                message: message,
+                variant: variant
+            })
+        );
     }
 }

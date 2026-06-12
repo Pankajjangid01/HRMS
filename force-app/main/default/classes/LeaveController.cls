@@ -164,12 +164,17 @@ public without sharing class LeaveController {
         }
     }
 
-    @AuraEnabled
-    public static void deductLeaveBalance(String leaveId) {
+    @InvocableMethod(label='Deduct Leave Balance')
+    public static void deductLeaveBalance(List<String> leaveIds) {
+        if(leaveIds == null || leaveIds.isEmpty()) {
+            return;
+        }
+        String leaveId = leaveIds[0];
         try {
             List<Leave_Request__c> leaves = [
                 SELECT
                     Id,
+                    Status__c,
                     Employee__c,
                     Leave_Type__c,
                     Number_Of_Days__c
@@ -177,56 +182,117 @@ public without sharing class LeaveController {
                 WHERE Id = :leaveId
                 LIMIT 1
             ];
-            if(leaves.isEmpty()) { return; }
 
+            if(leaves.isEmpty()) {
+                throw new AuraHandledException('Leave request not found.');
+            }
+
+            Leave_Request__c leaveReq = leaves[0];
+            if(leaveReq.Status__c != 'Approved') {
+                return;
+            }
+
+            Decimal requestedDays =
+                leaveReq.Number_Of_Days__c != null
+                ? leaveReq.Number_Of_Days__c
+                : 0;
+
+            // ── Fetch Leave Balance ─────────────────────────────
             List<Leave_Balance__c> balances = [
                 SELECT
                     Id,
+                    PTO_Total__c,
                     PTO_Used__c,
+                    Sick_Total__c,
                     Sick_Used__c,
+                    Bereavement_Total__c,
                     Bereavement_Used__c
+
                 FROM Leave_Balance__c
-                WHERE Employee_Leaves__c = :leaves[0].Employee__c
+                WHERE Employee_Leaves__c = :leaveReq.Employee__c
                 AND Year__c = :Date.today().year()
                 LIMIT 1
             ];
 
-            if(balances.isEmpty()) { return; }
+            if(balances.isEmpty()) {
+                throw new AuraHandledException(
+                    'Leave balance record not found for employee.'
+                );
+            }
+
             Leave_Balance__c lb = balances[0];
-            Decimal days =
-                leaves[0].Number_Of_Days__c != null
-                ? leaves[0].Number_Of_Days__c
-                : 0;
+            // ── PTO ────────────────────────────────────────────
+            if(leaveReq.Leave_Type__c == 'Paid Time Off') {
+                Decimal total =
+                    lb.PTO_Total__c != null
+                    ? lb.PTO_Total__c
+                    : 0;
 
-            if(leaves[0].Leave_Type__c == 'Paid Time Off') {
-                lb.PTO_Used__c =
-                    (
-                        lb.PTO_Used__c != null
-                        ? lb.PTO_Used__c
-                        : 0
-                    ) + days;
+                Decimal used =
+                    lb.PTO_Used__c != null
+                    ? lb.PTO_Used__c
+                    : 0;
 
-            } else if(leaves[0].Leave_Type__c == 'Sick') {
-                lb.Sick_Used__c =
-                    (
-                        lb.Sick_Used__c != null
-                        ? lb.Sick_Used__c
-                        : 0
-                    ) + days;
+                Decimal available = total - used;
+                if(requestedDays > available) {
+                    throw new AuraHandledException(
+                        'Insufficient PTO balance. Available balance: '
+                        + available + ' day(s).'
+                    );
+                }
+                lb.PTO_Used__c = used + requestedDays;
+            }
 
-            } else if(leaves[0].Leave_Type__c == 'Bereavement') {
+            // ── Sick Leave ─────────────────────────────────────
+            else if(leaveReq.Leave_Type__c == 'Sick') {
+                Decimal total =
+                    lb.Sick_Total__c != null
+                    ? lb.Sick_Total__c
+                    : 0;
+
+                Decimal used =
+                    lb.Sick_Used__c != null
+                    ? lb.Sick_Used__c
+                    : 0;
+
+                Decimal available = total - used;
+                if(requestedDays > available) {
+                    throw new AuraHandledException(
+                        'Insufficient Sick Leave balance. Available balance: '
+                        + available + ' day(s).'
+                    );
+                }
+                lb.Sick_Used__c = used + requestedDays;
+            }
+
+            // ── Bereavement ────────────────────────────────────
+            else if(leaveReq.Leave_Type__c == 'Bereavement') {
+                Decimal total =
+                    lb.Bereavement_Total__c != null
+                    ? lb.Bereavement_Total__c
+                    : 0;
+
+                Decimal used =
+                    lb.Bereavement_Used__c != null
+                    ? lb.Bereavement_Used__c
+                    : 0;
+
+                Decimal available = total - used;
+
+                if(requestedDays > available) {
+                    throw new AuraHandledException(
+                        'Insufficient Bereavement Leave balance. Available balance: '
+                        + available + ' day(s).'
+                    );
+                }
+
                 lb.Bereavement_Used__c =
-                    (
-                        lb.Bereavement_Used__c != null
-                        ? lb.Bereavement_Used__c
-                        : 0
-                    ) + days;
+                    used + requestedDays;
             }
             update lb;
-
         } catch(Exception e) {
             throw new AuraHandledException(
-                'Error deducting leave balance: ' + e.getMessage()
+                e.getMessage()
             );
         }
     }

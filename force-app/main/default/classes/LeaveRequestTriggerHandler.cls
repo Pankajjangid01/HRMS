@@ -1,32 +1,16 @@
 public class LeaveRequestTriggerHandler {
-
     public static void updateLeaveBalance(
         List<Leave_Request__c> newList,
         Map<Id, Leave_Request__c> oldMap
     ) {
-
-        Map<Id, Leave_Request__c> approvedLeaves =
-            new Map<Id, Leave_Request__c>();
-
         Set<Id> empIds = new Set<Id>();
-
-        // Find newly approved leaves
         for(Leave_Request__c leave : newList) {
-
             Leave_Request__c oldLeave =
                 oldMap.get(leave.Id);
-
             if(
-                leave.Status__c == 'Manager Approved' &&
-                oldLeave.Status__c !=
-                'Manager Approved'
+                leave.Status__c == 'HR Approved' &&
+                oldLeave.Status__c != 'HR Approved'
             ) {
-
-                approvedLeaves.put(
-                    leave.Employee__c,
-                    leave
-                );
-
                 empIds.add(leave.Employee__c);
             }
         }
@@ -35,71 +19,128 @@ public class LeaveRequestTriggerHandler {
             return;
         }
 
-        // Get leave balances
-        List<Leave_Balance__c> balances = [
+        Map<Id, Leave_Balance__c> balanceMap = new Map<Id, Leave_Balance__c>();
+        for(Leave_Balance__c lb : [
             SELECT
                 Id,
                 Employee_Leaves__c,
+                PTO_Total__c,
                 PTO_Used__c,
+                Sick_Total__c,
                 Sick_Used__c,
+                Bereavement_Total__c,
                 Bereavement_Used__c
+
             FROM Leave_Balance__c
             WHERE Employee_Leaves__c IN :empIds
             AND Year__c = :Date.today().year()
-        ];
+        ]) {
+            balanceMap.put(
+                lb.Employee_Leaves__c,
+                lb
+            );
+        }
 
         List<Leave_Balance__c> balancesToUpdate =
             new List<Leave_Balance__c>();
-
-        for(Leave_Balance__c balance : balances) {
-
-            Leave_Request__c leave =
-                approvedLeaves.get(
-                    balance.Employee_Leaves__c
-                );
-
-            if(leave == null) {
+        for(Leave_Request__c leave : newList) {
+            Leave_Request__c oldLeave = oldMap.get(leave.Id);
+            if(
+                leave.Status__c != 'HR Approved' ||
+                oldLeave.Status__c == 'HR Approved'
+            ) {
                 continue;
             }
 
-            Decimal days =
+            Leave_Balance__c balance = balanceMap.get(leave.Employee__c);
+            if(balance == null) {
+                leave.addError( 'Leave balance record not found for this employee.');
+                continue;
+            }
+
+            Decimal requestedDays =
                 leave.Number_Of_Days__c == null
                 ? 0
                 : leave.Number_Of_Days__c;
 
-            // Update correct leave type field
-            if(leave.Leave_Type__c ==
-                'Paid Time Off') {
+            // ── PTO ─────────────────────────────
+            if(leave.Leave_Type__c == 'Paid Time Off') {
 
-                balance.PTO_Used__c =
-                    (balance.PTO_Used__c == null
+                Decimal total =
+                    balance.PTO_Total__c == null
                     ? 0
-                    : balance.PTO_Used__c)
-                    + days;
+                    : balance.PTO_Total__c;
 
-            } else if(leave.Leave_Type__c ==
-                'Sick') {
-
-                balance.Sick_Used__c =
-                    (balance.Sick_Used__c == null
+                Decimal used =
+                    balance.PTO_Used__c == null
                     ? 0
-                    : balance.Sick_Used__c)
-                    + days;
+                    : balance.PTO_Used__c;
 
-            } else if(leave.Leave_Type__c ==
-                'Bereavement') {
+                Decimal available =
+                    total - used;
 
-                balance.Bereavement_Used__c =
-                    (
-                        balance
-                        .Bereavement_Used__c == null
-                        ? 0
-                        : balance
-                            .Bereavement_Used__c
-                    )
-                    + days;
+                if(requestedDays > available) {
+
+                    leave.addError(
+                        'Insufficient PTO balance. Available: '
+                        + available + ' day(s).'
+                    );
+                    continue;
+                }
+
+                balance.PTO_Used__c = used + requestedDays;
             }
 
+            // ── Sick Leave ─────────────────────
+            else if(leave.Leave_Type__c == 'Sick') {
+                Decimal total =
+                    balance.Sick_Total__c == null
+                    ? 0
+                    : balance.Sick_Total__c;
+
+                Decimal used =
+                    balance.Sick_Used__c == null
+                    ? 0
+                    : balance.Sick_Used__c;
+
+                Decimal available =
+                    total - used;
+
+                if(requestedDays > available) {
+                    leave.addError(
+                        'Insufficient Sick Leave balance. Available: '
+                        + available + ' day(s).'
+                    );
+                    continue;
+                }
+
+                balance.Sick_Used__c = used + requestedDays;
+            }
+
+            // ── Bereavement ────────────────────
+            else if(leave.Leave_Type__c == 'Bereavement') {
+                Decimal total =
+                    balance.Bereavement_Total__c == null
+                    ? 0
+                    : balance.Bereavement_Total__c;
+
+                Decimal used =
+                    balance.Bereavement_Used__c == null
+                    ? 0
+                    : balance.Bereavement_Used__c;
+
+                Decimal available =
+                    total - used;
+
+                if(requestedDays > available) {
+                    leave.addError(
+                        'Insufficient Bereavement Leave balance. Available: '
+                        + available + ' day(s).'
+                    );
+                    continue;
+                }
+                balance.Bereavement_Used__c = used + requestedDays;
+            }
             balancesToUpdate.add(balance);
         }
 

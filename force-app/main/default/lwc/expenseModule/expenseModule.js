@@ -49,7 +49,18 @@ export default class ExpenseModule extends LightningElement {
                 this.isLoading = false;
             })
             .catch(error => {
-                console.error(error);
+                console.error('Load Expenses Error:', JSON.stringify(error));
+                let errMsg = 'Error loading expenses';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
+                this.showToast('Error', errMsg, 'error');
                 this.isLoading = false;
             });
     }
@@ -79,8 +90,17 @@ export default class ExpenseModule extends LightningElement {
                 this.loadExpenses();
             })
             .catch(error => {
-                const errMsg = error.body?.message ||
-                    'Error cancelling expense';
+                console.error('Cancel Expense Error:', JSON.stringify(error));
+                let errMsg = 'Error cancelling expense';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
                 this.showToast('Error', errMsg, 'error');
                 this.isLoading = false;
             });
@@ -98,9 +118,18 @@ export default class ExpenseModule extends LightningElement {
                 }
             })
             .catch(error => {
-                this.showToast('Error',
-                    error.body?.message ||
-                    'Error fetching receipt', 'error');
+                console.error('View Receipt Error:', JSON.stringify(error));
+                let errMsg = 'Error fetching receipt';
+                if(error.body) {
+                    if(error.body.message) {
+                        errMsg = error.body.message;
+                    } else if(error.body.pageErrors && error.body.pageErrors.length > 0) {
+                        errMsg = error.body.pageErrors[0].message;
+                    } else if(error.body.output && error.body.output.errors && error.body.output.errors.length > 0) {
+                        errMsg = error.body.output.errors[0].message;
+                    }
+                }
+                this.showToast('Error', errMsg, 'error');
             });
     }
 

@@ -19,20 +19,6 @@
                 </button>
             </div>
 
-            <!-- Success Message -->
-            <template if:true={successMessage}>
-                <div class="msg-success">
-                    <p>{successMessage}</p>
-                </div>
-            </template>
-
-            <!-- Error Message -->
-            <template if:true={errorMessage}>
-                <div class="msg-error">
-                    <p>{errorMessage}</p>
-                </div>
-            </template>
-
             <!-- Leave Requests -->
             <template if:true={hasLeaveRequests}>
                 <div class="leave-list">

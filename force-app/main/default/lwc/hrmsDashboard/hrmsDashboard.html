@@ -11,13 +11,6 @@
             </div>
         </template>
 
-        <!-- TOAST -->
-        <template if:true={toastMessage}>
-            <div class={toastClass}>
-                <span>{toastMessage}</span>
-            </div>
-        </template>
-
         <!-- HEADER -->
         <div class="header-card">
             <div class="header-left">
@@ -267,11 +260,12 @@
                             <tr>
                                 <th>Employee</th>
                                 <th>Leave Type</th>
+                                <th>Leave Status</th>
                                 <th>Start Date</th>
                                 <th>End Date</th>
                                 <th>Days</th>
                                 <th>Reason</th>
-                                <template if:false={isHOD}>
+                                <template if:true={showLeaveActionColumn}>
                                     <th>Action</th>
                                 </template>
                             </tr>
@@ -281,12 +275,17 @@
                                 <tr key={leave.Id}>
                                     <td>{leave.empName}</td>
                                     <td>{leave.Leave_Type__c}</td>
+                                    <td>
+                                        <span class={leave.statusClass}>
+                                            {leave.Status__c}
+                                        </span>
+                                    </td>
                                     <td>{leave.Start_Date__c}</td>
                                     <td>{leave.End_Date__c}</td>
                                     <td>{leave.Number_Of_Days__c}</td>
                                     <td>{leave.Reason__c}</td>
                                     <td>
-                                        <template if:false={isHOD}>
+                                        <template if:true={showLeaveActionColumn}>
                                             <!-- <button
                                                 class="btn-approve"
                                                 data-id={leave.Id}

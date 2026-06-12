@@ -11,13 +11,6 @@
             </div>
         </template>
 
-        <!-- Error -->
-        <template if:true={hasError}>
-            <div class="error-message">
-                <p>{error}</p>
-            </div>
-        </template>
-
         <!-- Attendance Card -->
         <template if:false={isLoading}>
             <lightning-card title="My Attendance">

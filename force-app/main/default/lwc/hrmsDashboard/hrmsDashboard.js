@@ -1,5 +1,5 @@
 import { LightningElement, track } from 'lwc';
-
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getCurrentEmployeeInfo from '@salesforce/apex/HRMSDashboardController.getCurrentEmployeeInfo';
 import getDashboardStats from '@salesforce/apex/HRMSDashboardController.getDashboardStats';
 import getPendingLeaves from '@salesforce/apex/HRMSDashboardController.getPendingLeaves';
@@ -27,10 +27,6 @@ export default class HrmsDashboard extends LightningElement {
     @track myLeaveBalance = null;
     @track myExpenses = [];
     @track myLeaves = [];
-
-    // ── Toast ─────────────────────────────────────────────────────────────────
-    @track toastMessage = '';
-    @track toastType = 'success';
 
     // ── Employee Info ─────────────────────────────────────────────────────────
     @track employeeName = '';
@@ -62,7 +58,7 @@ export default class HrmsDashboard extends LightningElement {
                 this.team = emp.teamName || '';
                 this.userType = emp.userType || '';
                 console.log('User Type => ', this.userType);
-console.log('isFinance => ', this.isFinance);
+                console.log('isFinance => ', this.isFinance);
                 this.currentEmployeeId = emp.id || '';
             }
 
@@ -127,7 +123,8 @@ console.log('isFinance => ', this.isFinance);
 
     // ── Role Getters ──────────────────────────────────────────────────────────
     get isHRRole() {
-        return this.userType === 'Head HR' || this.userType === 'HR Staff';
+        const role = this.userType || '';
+        return role.includes('HR');
     }
 
     get isHOD() {
@@ -316,18 +313,23 @@ console.log('isFinance => ', this.isFinance);
     }
 
     // ── Toast ─────────────────────────────────────────────────────────────────
-    get toastClass() {
-        return `toast toast-${this.toastType}`;
-    }
-
     get showActionColumn() {
         return this.isHOD;
     }
 
+    get showLeaveActionColumn() {
+        return !this.isHOD && !this.isManager;
+    }
+
     showToast(message, type = 'success') {
-        this.toastMessage = message;
-        this.toastType = type;
-        setTimeout(() => { this.toastMessage = ''; }, 3000);
+        const title = type === 'error' ? 'Error' : 'Success';
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: title,
+                message: message,
+                variant: type
+            })
+        );
     }
 
     // ── Check In / Out ────────────────────────────────────────────────────────
