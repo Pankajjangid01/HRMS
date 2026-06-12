@@ -1,0 +1,54 @@
+.attendance-widget {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: none;
+    max-width: 400px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.date-display {
+    display: flex;
+    align-items: center;
+}
+
+.time-grid {
+    background: #f9f9fa;
+    border-radius: 8px;
+    padding: 16px 0;
+    border: 1px solid #e5e5e5;
+}
+
+.hours-box {
+    background: #f3f3f3;
+    border-radius: 8px;
+}
+
+.custom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.btn-checkin { background-color: #2e844a; color: white; }
+.btn-checkin:hover { background-color: #246a3b; box-shadow: 0 4px 8px rgba(46, 132, 74, 0.3); }
+
+.btn-checkout { background-color: #ba0517; color: white; }
+.btn-checkout:hover { background-color: #8c0411; box-shadow: 0 4px 8px rgba(186, 5, 23, 0.3); }
+
+.done-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}

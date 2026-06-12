@@ -139,7 +139,7 @@ public without sharing class HRMSDashboardController {
                 stats.put('pendingLeaves', [
                     SELECT COUNT()
                     FROM Leave_Request__c
-                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected')
+                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected', 'HR Approval Pending')
                 ]);
                 stats.put('pendingExpenses', [
                     SELECT COUNT() FROM Expense__c
@@ -299,7 +299,7 @@ public without sharing class HRMSDashboardController {
                         End_Date__c, Number_Of_Days__c,
                         Status__c, Reason__c
                     FROM Leave_Request__c
-                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected')
+                    WHERE Status__c IN ('Submitted', 'Manager Approved', 'Manager Rejected', 'HR Approval Pending')
                     ORDER BY CreatedDate DESC
                     LIMIT 50
                 ];

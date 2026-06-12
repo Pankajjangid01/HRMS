@@ -49,6 +49,18 @@ export default class AttendanceCheckin extends LightningElement {
             || '';
     }
 
+    get attendanceDisplayStatus() {
+        if (!this.hasCheckedIn) return 'Not Checked In';
+        if (!this.hasCheckedOut) return 'Checked In';
+        return this.attendanceStatus || 'Completed';
+    }
+
+    get badgeClass() {
+        if (!this.hasCheckedIn) return 'slds-badge slds-theme_warning';
+        if (!this.hasCheckedOut) return 'slds-badge slds-theme_info';
+        return 'slds-badge slds-theme_success';
+    }
+
     connectedCallback() {
         this.loadTodayAttendance();
     }

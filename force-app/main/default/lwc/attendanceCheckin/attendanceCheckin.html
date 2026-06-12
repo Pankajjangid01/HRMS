@@ -1,70 +1,73 @@
 <template>
-    <div class="attendance-container">
+    <div class="attendance-widget slds-card slds-p-around_medium">
 
         <!-- Loading -->
         <template if:true={isLoading}>
-            <div class="loading">
-                <lightning-spinner
-                    alternative-text="Loading"
-                    size="medium">
-                </lightning-spinner>
-            </div>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
         </template>
 
         <!-- Attendance Card -->
         <template if:false={isLoading}>
-            <lightning-card title="My Attendance">
-
-                <!-- Date -->
-                <div class="date-section">
-                    <p>Date: {todayDate}</p>
+            <!-- Header: Date and Status Badge -->
+            <div class="slds-grid slds-grid_align-spread slds-m-bottom_medium">
+                <div class="date-display slds-flex">
+                    <lightning-icon icon-name="utility:event" size="small" class="slds-m-right_x-small"></lightning-icon>
+                    <span class="slds-text-heading_small slds-text-color_default" style="font-weight: 600; padding-top:2px;">{todayDate}</span>
                 </div>
+                <div>
+                    <span class={badgeClass}>{attendanceDisplayStatus}</span>
+                </div>
+            </div>
 
-                <!-- Status -->
+            <!-- Time Details -->
+            <div class="time-grid slds-grid slds-m-bottom_large">
+                <div class="time-box slds-col slds-size_1-of-2 slds-text-align_center slds-border_right">
+                    <div class="slds-text-color_weak slds-text-title_caps">Check In</div>
+                    <div class="slds-text-heading_medium slds-m-top_xx-small">
+                        <template if:true={hasCheckedIn}>{checkInTime}</template>
+                        <template if:false={hasCheckedIn}>--:--</template>
+                    </div>
+                </div>
+                <div class="time-box slds-col slds-size_1-of-2 slds-text-align_center">
+                    <div class="slds-text-color_weak slds-text-title_caps">Check Out</div>
+                    <div class="slds-text-heading_medium slds-m-top_xx-small">
+                        <template if:true={hasCheckedOut}>{checkOutTime}</template>
+                        <template if:false={hasCheckedOut}>--:--</template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Working Hours -->
+            <template if:true={hasCheckedOut}>
+                <div class="hours-box slds-text-align_center slds-m-bottom_medium slds-p-around_x-small">
+                    <span class="slds-text-color_weak">Total Working Hours: </span>
+                    <strong class="slds-text-heading_small">{workingHours}</strong>
+                </div>
+            </template>
+
+            <!-- Actions -->
+            <div class="action-section slds-text-align_center">
+                <template if:false={hasCheckedIn}>
+                    <button class="custom-btn btn-checkin" onclick={handleCheckIn}>
+                        <lightning-icon icon-name="utility:check" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                        Check In
+                    </button>
+                </template>
                 <template if:true={hasCheckedIn}>
-                    <div class="status-section">
-                        <p>Check In: {checkInTime}</p>
-                        <template if:true={hasCheckedOut}>
-                            <p>Check Out: {checkOutTime}</p>
-                            <p>Working Hours: {workingHours}</p>
-                            <p>Status: {attendanceStatus}</p>
-                        </template>
+                    <template if:false={hasCheckedOut}>
+                        <button class="custom-btn btn-checkout" onclick={handleCheckOut}>
+                            <lightning-icon icon-name="utility:logout" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                            Check Out
+                        </button>
+                    </template>
+                </template>
+                <template if:true={hasCheckedOut}>
+                    <div class="done-message slds-text-color_success slds-text-heading_small slds-p-top_small">
+                        <lightning-icon icon-name="utility:success" size="small" variant="success" class="slds-m-right_x-small"></lightning-icon>
+                        Attendance marked for today
                     </div>
                 </template>
-
-                <!-- Buttons -->
-                <div class="button-section">
-
-                    <!-- Check In Button -->
-                    <template if:false={hasCheckedIn}>
-                        <lightning-button
-                            label="Check In"
-                            variant="success"
-                            onclick={handleCheckIn}>
-                        </lightning-button>
-                    </template>
-
-                    <!-- Check Out Button -->
-                    <template if:true={hasCheckedIn}>
-                        <template if:false={hasCheckedOut}>
-                            <lightning-button
-                                label="Check Out"
-                                variant="destructive"
-                                onclick={handleCheckOut}>
-                            </lightning-button>
-                        </template>
-                    </template>
-
-                    <!-- Done Message -->
-                    <template if:true={hasCheckedOut}>
-                        <p class="done-message">
-                            ✅ Attendance marked for today
-                        </p>
-                    </template>
-
-                </div>
-
-            </lightning-card>
+            </div>
         </template>
 
     </div>

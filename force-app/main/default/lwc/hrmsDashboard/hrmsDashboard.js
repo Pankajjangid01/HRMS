@@ -81,7 +81,12 @@ export default class HrmsDashboard extends LightningElement {
 
             this.leaveRequests = (leaves || []).map(l => ({
                 ...l,
-                empName: (l.Employee__r?.First_Name__c || '') + ' ' + (l.Employee__r?.Last_Name__c || '')
+                empName: (l.Employee__r?.First_Name__c || '') + ' ' + (l.Employee__r?.Last_Name__c || ''),
+                showLeaveApproveBtn: [
+                    'HR Approval Pending',
+                    'Manager Approved',
+                    'Manager Rejected'
+                ].includes(l.Status__c)
             }));
 
             this.expenses = (exps || []).map(e => ({

@@ -286,26 +286,14 @@
                                     <td>{leave.Reason__c}</td>
                                     <td>
                                         <template if:true={showLeaveActionColumn}>
-                                            <!-- <button
-                                                class="btn-approve"
-                                                data-id={leave.Id}
-                                                data-type="leave"
-                                                onclick={handleApprove}>
-                                                ✅ Approve
-                                            </button>
-                                            <button
-                                                class="btn-reject"
-                                                data-id={leave.Id}
-                                                data-type="leave"
-                                                onclick={handleReject}>
-                                                ❌ Reject
-                                            </button> -->
-                                            <button
-                                                class="btn-approve"
-                                                data-id={leave.Id}
-                                                onclick={handleViewApproval}>
-                                                👁 View And Approve
-                                            </button>
+                                            <template if:true={leave.showLeaveApproveBtn}>
+                                                <button
+                                                    class="btn-approve"
+                                                    data-id={leave.Id}
+                                                    onclick={handleViewApproval}>
+                                                    👁 View And Approve
+                                                </button>
+                                            </template>
                                         </template>
                                     </td>
                                 </tr>

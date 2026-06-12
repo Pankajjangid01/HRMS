@@ -32,11 +32,10 @@ public without sharing class LeaveController {
 
             return balances.isEmpty() ? null : balances[0];
 
+        } catch(AuraHandledException e) {
+            throw e;
         } catch(Exception e) {
-
-            throw new AuraHandledException(
-                'Error fetching leave balance: ' + e.getMessage()
-            );
+            throw new AuraHandledException(e.getMessage());
         }
     }
 
@@ -62,10 +61,10 @@ public without sharing class LeaveController {
                 WHERE Employee__c = :emp.Id
                 ORDER BY CreatedDate DESC
             ];
+        } catch(AuraHandledException e) {
+            throw e;
         } catch(Exception e) {
-            throw new AuraHandledException(
-                'Error fetching leave requests: ' + e.getMessage()
-            );
+            throw new AuraHandledException(e.getMessage());
         }
     }
 
@@ -100,7 +99,7 @@ public without sharing class LeaveController {
 
             if(balances.isEmpty()) {
                 throw new AuraHandledException(
-                    'Leave balance not found'
+                    'Leave balance record not found for the current year. Please contact HR.'
                 );
             }
             Integer days = sDate.daysBetween(eDate) + 1;
@@ -130,8 +129,10 @@ public without sharing class LeaveController {
 
             insert lr;
 
+        } catch(AuraHandledException e) {
+            throw e;
         } catch(Exception e) {
-            throw new AuraHandledException('Error applying leave: ' + e.getMessage());
+            throw new AuraHandledException(e.getMessage());
         }
     }
 
@@ -159,8 +160,10 @@ public without sharing class LeaveController {
             requests[0].Status__c = 'Withdrawn';
             update requests[0];
 
+        } catch(AuraHandledException e) {
+            throw e;
         } catch(Exception e) {
-            throw new AuraHandledException('Error cancelling leave: ' + e.getMessage());
+            throw new AuraHandledException(e.getMessage());
         }
     }
 
@@ -216,7 +219,7 @@ public without sharing class LeaveController {
 
             if(balances.isEmpty()) {
                 throw new AuraHandledException(
-                    'Leave balance record not found for employee.'
+                    'Leave balance record not found for employee for the current year. Please contact HR.'
                 );
             }
 
@@ -290,10 +293,10 @@ public without sharing class LeaveController {
                     used + requestedDays;
             }
             update lb;
+        } catch(AuraHandledException e) {
+            throw e;
         } catch(Exception e) {
-            throw new AuraHandledException(
-                e.getMessage()
-            );
+            throw new AuraHandledException(e.getMessage());
         }
     }
 

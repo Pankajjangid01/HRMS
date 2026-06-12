@@ -1,0 +1,125 @@
+<template>
+    <!-- Button -->
+    <lightning-button
+        label="👥 Assign Members"
+        variant="brand"
+        onclick={openModal}>
+    </lightning-button>
+
+    <!-- Modal -->
+    <template if:true={showModal}>
+        <div class="modal-overlay">
+            <div class="modal-box">
+
+                <div class="modal-header">
+                    <h2>👥 Assign Team Members</h2>
+                    <button class="modal-close" 
+                        onclick={closeModal}>✕</button>
+                </div>
+
+                <div class="modal-body">
+
+                    <template if:true={isLoading}>
+                        <div class="loading-wrap">
+                            <lightning-spinner
+                                alternative-text="Loading"
+                                size="medium">
+                            </lightning-spinner>
+                        </div>
+                    </template>
+
+                    <template if:false={isLoading}>
+
+                        <template if:true={errorMessage}>
+                            <div class="error-banner">
+                                {errorMessage}
+                            </div>
+                        </template>
+
+                        <!-- Search -->
+                        <div class="search-wrap">
+                            <input
+                                type="text"
+                                class="search-input"
+                                placeholder="🔍 Search employees..."
+                                value={searchTerm}
+                                onkeyup={handleSearch} />
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="stats-bar">
+                            <span class="stat-pill blue">
+                                Total: {totalCount}
+                            </span>
+                            <span class="stat-pill green">
+                                Selected: {selectedCount}
+                            </span>
+                        </div>
+
+                        <!-- Employee List -->
+                        <div class="emp-list">
+                            <template if:true={hasEmployees}>
+                                <template 
+                                    for:each={filteredEmployees}
+                                    for:item="emp">
+                                    <div key={emp.Id}
+                                        class={emp.rowClass}
+                                        onclick={handleToggle}
+                                        data-id={emp.Id}>
+                                        <div class="emp-check">
+                                            <span class={emp.checkClass}>
+                                                {emp.checkIcon}
+                                            </span>
+                                        </div>
+                                        <div class="emp-info">
+                                            <p class="emp-name">
+                                                {emp.First_Name__c} {emp.Last_Name__c}
+                                            </p>
+                                            <p class="emp-sub">
+                                                {emp.Designation__c} · {emp.Email__c}
+                                            </p>
+                                            <template if:true={emp.isCurrentTeam}>
+                                                <span class="badge-current">
+                                                    Current Member
+                                                </span>
+                                            </template>
+                                            <template if:true={emp.isOtherTeam}>
+                                                <span class="badge-other">
+                                                    Other Team
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </template>
+                            <template if:false={hasEmployees}>
+                                <p class="empty-text">
+                                    No employees found in this department
+                                </p>
+                            </template>
+                        </div>
+
+                    </template>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-cancel" 
+                        onclick={closeModal}>
+                        Cancel
+                    </button>
+                    <button class="btn-save"
+                        onclick={handleSave}
+                        disabled={isSaving}>
+                        <template if:true={isSaving}>
+                            Saving...
+                        </template>
+                        <template if:false={isSaving}>
+                            Save Members ✅
+                        </template>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </template>
+</template>
