@@ -146,7 +146,7 @@ export default class HrmsDashboard extends LightningElement {
     }
 
     get showPersonalSection() {
-        return this.isHOD || this.isManager || this.isFinance;
+        return this.isHRRole || this.isHOD || this.isManager || this.isFinance;
     }
 
     get showApprovalSection() {

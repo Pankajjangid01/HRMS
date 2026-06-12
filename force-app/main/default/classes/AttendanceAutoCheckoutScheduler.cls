@@ -5,8 +5,6 @@ public class AttendanceAutoCheckoutScheduler {
 
         // Today start & end
         Date today = Date.today();
-        DateTime startOfDay = DateTime.newInstance(today, Time.newInstance(0, 0, 0, 0));
-        DateTime endOfDay = DateTime.newInstance(today, Time.newInstance(23, 59, 59, 0));
         List<Attendance__c> records = [
             SELECT
                 Id,
@@ -18,11 +16,21 @@ public class AttendanceAutoCheckoutScheduler {
                 Attendance_Status__c,
                 Remarks__c
             FROM Attendance__c
-            WHERE CreatedDate >= :startOfDay
-            AND CreatedDate <= :endOfDay
+            WHERE Attendance_Date__c = :today
             AND Is_Check_In_Done__c = true
             AND Is_Check_Out_Done__c = false
         ];
+
+        // Fetch dynamic attendance policies
+        List<Attendance_Policy__mdt> policies = [
+            SELECT Full_Day_Hours__c, Half_Day_Hours__c
+            FROM Attendance_Policy__mdt
+            WHERE Is_Active__c = true
+            LIMIT 1
+        ];
+        
+        Decimal fullDayHours = !policies.isEmpty() && policies[0].Full_Day_Hours__c != null ? policies[0].Full_Day_Hours__c : 8.0;
+        Decimal halfDayHours = !policies.isEmpty() && policies[0].Half_Day_Hours__c != null ? policies[0].Half_Day_Hours__c : 4.0;
 
         for(Attendance__c att : records) {
             DateTime autoCheckoutTime = DateTime.newInstance(today, Time.newInstance(23, 59, 0, 0));
@@ -30,13 +38,13 @@ public class AttendanceAutoCheckoutScheduler {
             att.Check_Out__c = autoCheckoutTime;
             att.Is_Check_Out_Done__c = true;
 
-            Decimal hours =(autoCheckoutTime.getTime() - att.Check_In__c.getTime()) / (1000 * 60 * 60);
-            hours = hours.setScale(2);
+            Long ms = autoCheckoutTime.getTime() - att.Check_In__c.getTime();
+            Decimal hours = (ms / 3600000.0).setScale(2);
             att.Working_Hours__c = hours;
-            if(hours >= 8) {
+            if(hours >= fullDayHours) {
                 att.Attendance_Status__c = 'Present';
             }
-            else if(hours >= 4) {
+            else if(hours >= halfDayHours) {
                 att.Attendance_Status__c = 'Half Day';
             }
             else {
