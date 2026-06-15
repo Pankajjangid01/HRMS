@@ -740,13 +740,13 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=true)
     public static String getApprovalWorkItemId(Id recordId) {
 
-        ProcessInstanceWorkitem wi = [
+        List<ProcessInstanceWorkitem> wis = [
             SELECT Id
             FROM ProcessInstanceWorkitem
             WHERE ProcessInstance.TargetObjectId = :recordId
             LIMIT 1
         ];
 
-        return wi.Id;
+        return wis.isEmpty() ? null : wis[0].Id;
     }
 }

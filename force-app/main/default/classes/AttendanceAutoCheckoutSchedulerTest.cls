@@ -20,13 +20,13 @@ public class AttendanceAutoCheckoutSchedulerTest {
         );
         insert emp;
 
-        // 2. Create Attendance record with check-in at midnight today to avoid future time validation
-        Date todayDate = Date.today();
-        DateTime checkInTime = DateTime.newInstance(todayDate, Time.newInstance(0, 0, 0, 0));
+        // 2. Create Attendance record with check-in yesterday to ensure > 13 hours
+        Date yesterdayDate = Date.today().addDays(-1);
+        DateTime checkInTime = DateTime.newInstance(yesterdayDate, Time.newInstance(0, 0, 0, 0));
         
         Attendance__c att = new Attendance__c(
             Employee__c = emp.Id,
-            Attendance_Date__c = todayDate,
+            Attendance_Date__c = yesterdayDate,
             Check_In__c = checkInTime,
             Is_Check_In_Done__c = true,
             Is_Check_Out_Done__c = false
