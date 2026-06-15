@@ -46,7 +46,7 @@ public class EmployeeUserCreationQueueable implements Queueable {
                 if(emp.User__c != null) continue;
                    
                 // Employee (portal) needs Contact
-                if(emp.User_Type__c == 'Employee' && emp.Contact__c == null) {
+                if(emp.User_Type__c == 'Portal - Employee' && emp.Contact__c == null) {
                     System.debug('Contact missing for Employee: ' + emp.Id);
                     continue;
                 }
@@ -66,7 +66,7 @@ public class EmployeeUserCreationQueueable implements Queueable {
                 u.UserPreferencesContentEmailAsAndWhen = false;
     
                 // ── Profile Assignment — Correct Logic ────────────────────
-                if(emp.User_Type__c == 'Employee') {
+                if(emp.User_Type__c == 'Portal - Employee') {
                     // Portal Employee — Community License
                     u.ProfileId = profileMap.get('HRMS_Experience_User');
                     u.ContactId = emp.Contact__c;
@@ -81,7 +81,7 @@ public class EmployeeUserCreationQueueable implements Queueable {
                 } else if(emp.User_Type__c == 'HOD') {
                     u.ProfileId = profileMap.get('YOJOY HOD');
 
-                } else if(emp.User_Type__c == 'Team Manager') {
+                } else if(emp.User_Type__c == 'Manager') {
                     u.ProfileId = profileMap.get('YOJOY Team Manager');
 
                 } else if(emp.User_Type__c == 'Finance Executive') {

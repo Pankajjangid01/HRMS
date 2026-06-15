@@ -1,13 +1,12 @@
 public class AttendanceAutoCheckoutScheduler {
     @InvocableMethod(label='Auto Checkout Employees')
     public static void autoCheckoutEmployees(List<String> dummy) {
+        System.debug('=== AUTO CHECKOUT STARTED ===');
         List<Attendance__c> attendanceToUpdate = new List<Attendance__c>();
 
-        // Today start & end
-        Date today = Date.today();
-        List<Attendance__c> records = [
-            SELECT
-                Id,
+        List<Attendance__c> records = [            
+            SELECT Id,
+                Attendance_Date__c,
                 Check_In__c,
                 Check_Out__c,
                 Is_Check_In_Done__c,
@@ -16,13 +15,15 @@ public class AttendanceAutoCheckoutScheduler {
                 Attendance_Status__c,
                 Remarks__c
             FROM Attendance__c
-            WHERE Attendance_Date__c = :today
-            AND Is_Check_In_Done__c = true
+            WHERE Is_Check_In_Done__c = true
             AND Is_Check_Out_Done__c = false
+            AND Check_In__c != null
+            AND Attendance_Date__c <= :Date.today()
         ];
 
-        // Fetch dynamic attendance policies
-        List<Attendance_Policy__mdt> policies = [
+        System.debug('Records Found: ' + records.size());
+        
+        List<Attendance_Policy__mdt> policies = [	
             SELECT Full_Day_Hours__c, Half_Day_Hours__c
             FROM Attendance_Policy__mdt
             WHERE Is_Active__c = true
@@ -32,8 +33,9 @@ public class AttendanceAutoCheckoutScheduler {
         Decimal fullDayHours = !policies.isEmpty() && policies[0].Full_Day_Hours__c != null ? policies[0].Full_Day_Hours__c : 8.0;
         Decimal halfDayHours = !policies.isEmpty() && policies[0].Half_Day_Hours__c != null ? policies[0].Half_Day_Hours__c : 4.0;
 
-        for(Attendance__c att : records) {
-            DateTime autoCheckoutTime = DateTime.newInstance(today, Time.newInstance(23, 59, 0, 0));
+        for(Attendance__c att : records){
+
+            DateTime autoCheckoutTime = System.now();
 
             att.Check_Out__c = autoCheckoutTime;
             att.Is_Check_Out_Done__c = true;
@@ -55,8 +57,10 @@ public class AttendanceAutoCheckoutScheduler {
             attendanceToUpdate.add(att);
         }
 
-        if(!attendanceToUpdate.isEmpty()) {
+        if(!attendanceToUpdate.isEmpty()){
             update attendanceToUpdate;
+            System.debug('Updated Records: ' + attendanceToUpdate.size());
         }
+        System.debug('=== AUTO CHECKOUT FINISHED ===');
     }
 }
