@@ -379,7 +379,7 @@ public without sharing class TeamDashboardController {
     @AuraEnabled(cacheable=false)
     public static Map<String, Object> getMyTeamInfo() {
         try {
-            Employee__c currentEmp = [
+            List<Employee__c> emps = [
                 SELECT 
                     Id,
                     First_Name__c,
@@ -397,6 +397,12 @@ public without sharing class TeamDashboardController {
                 AND Status__c = 'Active'
                 LIMIT 1
             ];
+
+            if(emps.isEmpty()) {
+                return null;
+            }
+            
+            Employee__c currentEmp = emps[0];
 
             Map<String, Object> result = new Map<String, Object>();
 
@@ -445,7 +451,7 @@ public without sharing class TeamDashboardController {
                 }
 
                 result.put('teamName', null);
-                result.put('departmentName', currentEmp.Department__r.Name);
+                result.put('departmentName', currentEmp.Department__r != null ? currentEmp.Department__r.Name : null);
                 result.put('managerName', null);
                 result.put('isHOD', true);
                 result.put('members', memberList);

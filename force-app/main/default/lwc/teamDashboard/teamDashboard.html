@@ -14,14 +14,19 @@
             <div class="page-header">
                 <div>
                     <h1 class="page-title">
-                        <template if:true={isManager}>Team Dashboard</template>
-                        <template if:false={isManager}>My Team</template>
+                        Welcome, {employeeName} 👋
                     </h1>
-                </div>
-                <template if:true={myTeamInfo.teamName}>
-                    <div class="header-badge">
-                        <span>{myTeamInfo.teamName}</span>
+                    <div style="font-size: 14px; color: #6b7b8d; margin-top: 4px;">
+                        <template if:true={isManager}>Manager Dashboard</template>
+                        <template if:false={isManager}>Employee Dashboard</template>
                     </div>
+                </div>
+                <template if:true={myTeamInfo}>
+                    <template if:true={myTeamInfo.teamName}>
+                        <div class="header-badge">
+                            <span>{myTeamInfo.teamName}</span>
+                        </div>
+                    </template>
                 </template>
             </div>
 
@@ -51,18 +56,46 @@
                 </div>
             </template>
 
+            <!-- EMPLOYEE STATS (Visible to Everyone) -->
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-label">Total Leaves</div>
+                    <div class="stat-value">{totalLeavesApplied}</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-label">Total Expenses</div>
+                    <div class="stat-value">{totalExpensesApplied}</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-label">Team Members</div>
+                    <div class="stat-value">{teamMemberCount}</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">Leave Balance</div>
+                    <template if:true={myLeaveBalance}>
+                        <div class="stat-value" style="font-size: 16px; margin-top: 8px;">
+                            <span style="font-size:12px; color:#708090;">PTO:</span> {myLeaveBalance.PTO_Remaining__c}/{myLeaveBalance.PTO_Total__c}
+                            <br/>
+                            <span style="font-size:12px; color:#708090;">Sick:</span> {myLeaveBalance.Sick_Remaining__c}/{myLeaveBalance.Sick_Total__c}
+                            <br/>
+                            <span style="font-size:12px; color:#708090;">Bereavement:</span> {myLeaveBalance.Bereavement_Remaining__c}/{myLeaveBalance.Bereavement_Total__c}
+                        </div>
+                    </template>
+                    <template if:false={myLeaveBalance}>
+                        <div class="stat-value">--</div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- MANAGER APPROVAL STATS -->
             <template if:true={isManager}>
-                <div class="stats-grid">
-                    <div class="stat-card blue">
-                        <div class="stat-label">Active Members</div>
-                        <div class="stat-value">{teamMemberCount}</div>
-                    </div>
+                <div class="stats-grid" style="margin-top: 18px;">
                     <div class="stat-card orange">
-                        <div class="stat-label">Pending Leaves</div>
+                        <div class="stat-label">Pending Team Leaves</div>
                         <div class="stat-value">{pendingLeaveCount}</div>
                     </div>
                     <div class="stat-card red">
-                        <div class="stat-label">Pending Expenses</div>
+                        <div class="stat-label">Pending Team Expenses</div>
                         <div class="stat-value">{pendingExpenseCount}</div>
                     </div>
                     <div class="stat-card green">
