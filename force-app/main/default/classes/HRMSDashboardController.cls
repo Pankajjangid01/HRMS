@@ -4,13 +4,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static List<Leave_Request__c> getMyLeaves() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c emp = [
-                SELECT Id FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c emp = getCurrentEmployee();
             return [
                 SELECT Id, Name, Leave_Type__c,
                     Start_Date__c, End_Date__c,
@@ -29,13 +23,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static List<Expense__c> getMyExpenses() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c emp = [
-                SELECT Id FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c emp = getCurrentEmployee();
             return [
                 SELECT Id, Claim_Title__c,
                     Total_Amount__c, Status__c,
@@ -53,14 +41,7 @@ public without sharing class HRMSDashboardController {
     // ── Create Draft Expense ─────────────────────────────────────────────────
     @AuraEnabled
     public static String createDraftExpense() {
-        Id userId = UserInfo.getUserId();
-        Employee__c emp = [
-            SELECT Id FROM Employee__c
-            WHERE User__c = :userId
-            AND Status__c = 'Active'
-            LIMIT 1
-        ];
-
+        Employee__c emp = getCurrentEmployee();
         Expense__c exp = new Expense__c();
         exp.Employee__c = emp.Id;
         exp.Status__c = 'Draft';
@@ -113,14 +94,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static Map<String, Object> getDashboardStats() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c currentEmp = [
-                SELECT Id, User_Type__c, Department__c, Team__c
-                FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c currentEmp = getCurrentEmployee();
 
             Map<String, Object> stats = new Map<String, Object>();
             String role = currentEmp.User_Type__c;
@@ -149,94 +123,51 @@ public without sharing class HRMSDashboardController {
 
             // ── HOD ───────────────────────────────────────────────────────────
             else if(role.contains('HOD')) {
-                // Department ki teams
-                List<Team__c> deptTeams = [
-                    SELECT Id FROM Team__c
-                    WHERE Department__c = :currentEmp.Department__c
-                ];
-                Set<Id> teamIds = new Set<Id>();
-                for(Team__c t : deptTeams) teamIds.add(t.Id);
-
-                Integer deptEmpCount = 0;
-                Integer presentCount = 0;
-                Integer pendingLeaveCount = 0;
-                Integer pendingExpenses = 0;
-
-                if(!teamIds.isEmpty()) {
-                    deptEmpCount = [
-                        SELECT COUNT() FROM Employee__c
-                        WHERE Team__c IN :teamIds
-                        AND Status__c = 'Active'
-                        AND Id != :currentEmp.Id
-                    ];
-                    presentCount = [
-                        SELECT COUNT() FROM Attendance__c
-                        WHERE Employee__r.Team__c IN :teamIds
-                        AND Attendance_Date__c = :today
-                        AND Is_Check_In_Done__c = true
-                        AND Employee__c != :currentEmp.Id
-                    ];
-
-                    Set<Id> deptEmpIds = new Set<Id>();
-                    for(Employee__c e : [
-                        SELECT Id FROM Employee__c
-                        WHERE Team__c IN :teamIds AND Status__c = 'Active'
-                    ]) deptEmpIds.add(e.Id);
-
-                    if(!deptEmpIds.isEmpty()) {
-                        pendingLeaveCount = [
-                            SELECT COUNT() FROM Leave_Request__c
-                            WHERE Employee__c IN :deptEmpIds
-                            AND Status__c = 'Submitted'
-                            AND Employee__c != :currentEmp.Id
-                        ];
-                        pendingExpenses = [
-                            SELECT COUNT() FROM Expense__c
-                            WHERE Employee__c IN :deptEmpIds
-                            AND Status__c = 'Submitted'
-                            AND Employee__c != :currentEmp.Id
-                        ];
-                    }
+                Set<Id> subordinateEmpIds = new Set<Id>();
+                for(Employee__c e : [SELECT Id FROM Employee__c WHERE Team__r.Department__c = :currentEmp.Department__c AND Status__c = 'Active' AND Id != :currentEmp.Id]) {
+                    subordinateEmpIds.add(e.Id);
                 }
 
-                stats.put('totalEmployees', deptEmpCount);
-                stats.put('presentToday', presentCount);
-                stats.put('pendingLeaves', pendingLeaveCount);
-                stats.put('pendingExpenses', pendingExpenses);
+                stats.put('totalEmployees', subordinateEmpIds.size());
+                if (!subordinateEmpIds.isEmpty()) {
+                    stats.put('presentToday', [SELECT COUNT() FROM Attendance__c WHERE Employee__c IN :subordinateEmpIds AND Attendance_Date__c = :today AND Is_Check_In_Done__c = true]);
+                    stats.put('pendingLeaves', [SELECT COUNT() FROM Leave_Request__c WHERE Employee__c IN :subordinateEmpIds AND Status__c = 'Submitted']);
+                    stats.put('pendingExpenses', [SELECT COUNT() FROM Expense__c WHERE Employee__c IN :subordinateEmpIds AND Status__c = 'Submitted']);
+                } else {
+                    stats.put('presentToday', 0);
+                    stats.put('pendingLeaves', 0);
+                    stats.put('pendingExpenses', 0);
+                }
             }
 
             // ── TEAM MANAGER ──────────────────────────────────────────────────
             else if(role.contains('Manager')) {
-                Integer teamEmpCount = [
-                    SELECT COUNT() FROM Employee__c
-                    WHERE Manager__c = :currentEmp.Id
-                    AND Status__c = 'Active'
-                    AND Id != :currentEmp.Id
-                ];
-                Integer presentCount = [
-                    SELECT COUNT() FROM Attendance__c
-                    WHERE Employee__r.Manager__c = :currentEmp.Id
-                    AND Attendance_Date__c = :today
-                    AND Is_Check_In_Done__c = true
-                    AND Employee__c != :currentEmp.Id
-                ];
-                Integer pendingLeaves = [
-                    SELECT COUNT() FROM Leave_Request__c
-                    WHERE Employee__r.Manager__c = :currentEmp.Id
-                    AND Status__c = 'Submitted'
-                    AND Employee__c != :currentEmp.Id
-                ];
-                Integer pendingExpenses = [
-                    SELECT COUNT() FROM Expense__c
-                    WHERE Employee__r.Manager__c = :currentEmp.Id
-                    AND Status__c = 'Submitted'
-                    AND Employee__c != :currentEmp.Id
-                ];
+                Set<Id> subordinateEmpIds = new Set<Id>();
+                for(Employee__c e : [SELECT Id FROM Employee__c WHERE Manager__c = :currentEmp.Id AND Status__c = 'Active' AND Id != :currentEmp.Id]) {
+                    subordinateEmpIds.add(e.Id);
+                }
 
-                stats.put('totalEmployees', teamEmpCount);
-                stats.put('presentToday', presentCount);
-                stats.put('pendingLeaves', pendingLeaves);
-                stats.put('pendingExpenses', pendingExpenses);
+                stats.put('totalEmployees', subordinateEmpIds.size());
+                if (!subordinateEmpIds.isEmpty()) {
+                    stats.put('presentToday', [
+                        SELECT COUNT() FROM Attendance__c
+                        WHERE Employee__c IN :subordinateEmpIds
+                        AND Attendance_Date__c = :today
+                        AND Is_Check_In_Done__c = true
+                    ]);
+                    stats.put('pendingLeaves', [
+                        SELECT COUNT() FROM Leave_Request__c
+                        WHERE Employee__c IN :subordinateEmpIds AND Status__c = 'Submitted'
+                    ]);
+                    stats.put('pendingExpenses', [
+                        SELECT COUNT() FROM Expense__c
+                        WHERE Employee__c IN :subordinateEmpIds AND Status__c = 'Submitted'
+                    ]);
+                } else {
+                    stats.put('presentToday', 0);
+                    stats.put('pendingLeaves', 0);
+                    stats.put('pendingExpenses', 0);
+                }
             }
 
             // ── FINANCE EXECUTIVE ─────────────────────────────────────────────
@@ -279,14 +210,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static List<Leave_Request__c> getPendingLeaves() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c currentEmp = [
-                SELECT Id, User_Type__c, Department__c, Team__c
-                FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c currentEmp = getCurrentEmployee();
 
             String role = currentEmp.User_Type__c;
 
@@ -362,14 +286,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static List<Expense__c> getPendingExpenses() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c currentEmp = [
-                SELECT Id, User_Type__c, Department__c
-                FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c currentEmp = getCurrentEmployee();
 
             String role = currentEmp.User_Type__c;
 
@@ -487,14 +404,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static List<Employee__c> getMyEmployees() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c currentEmp = [
-                SELECT Id, User_Type__c, Department__c, Team__c
-                FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
+            Employee__c currentEmp = getCurrentEmployee();
 
             String role = currentEmp.User_Type__c;
 
@@ -574,14 +484,7 @@ public without sharing class HRMSDashboardController {
     @AuraEnabled(cacheable=false)
     public static Attendance__c getTodayAttendance() {
         try {
-            Id userId = UserInfo.getUserId();
-            Employee__c emp = [
-                SELECT Id FROM Employee__c
-                WHERE User__c = :userId
-                AND Status__c = 'Active'
-                LIMIT 1
-            ];
-
+            Employee__c emp = getCurrentEmployee();
             List<Attendance__c> records = [
                 SELECT Id, Check_In__c, Check_Out__c,
                     Working_Hours__c, Attendance_Status__c,
@@ -602,14 +505,8 @@ public without sharing class HRMSDashboardController {
     // ── Check In ──────────────────────────────────────────────────────────────
     @AuraEnabled
     public static Attendance__c doCheckIn() {
-        Id userId = UserInfo.getUserId();
-        Employee__c emp = [
-            SELECT Id FROM Employee__c
-            WHERE User__c = :userId
-            AND Status__c = 'Active'
-            LIMIT 1
-        ];
-
+        Employee__c emp = getCurrentEmployee();
+        if (emp == null) throw new AuraHandledException('Active employee record not found.');
         List<Attendance__c> existing = [
             SELECT Id FROM Attendance__c
             WHERE Employee__c = :emp.Id
@@ -628,19 +525,18 @@ public without sharing class HRMSDashboardController {
         att.Is_Check_In_Done__c = true;
         insert att;
 
-        return getTodayAttendance();
+        return [
+            SELECT Id, Check_In__c, Check_Out__c, Working_Hours__c, Attendance_Status__c, Is_Check_In_Done__c, Is_Check_Out_Done__c, Attendance_Date__c
+            FROM Attendance__c
+            WHERE Id = :att.Id
+        ];
     }
 
     // ── Check Out ─────────────────────────────────────────────────────────────
     @AuraEnabled
     public static Attendance__c doCheckOut() {
-        Id userId = UserInfo.getUserId();
-        Employee__c emp = [
-            SELECT Id FROM Employee__c
-            WHERE User__c = :userId
-            AND Status__c = 'Active'
-            LIMIT 1
-        ];
+        Employee__c emp = getCurrentEmployee();
+        if (emp == null) throw new AuraHandledException('Active employee record not found.');
 
         List<Attendance__c> records = [
             SELECT Id, Check_In__c
@@ -679,7 +575,11 @@ public without sharing class HRMSDashboardController {
         }
 
         update att;
-        return getTodayAttendance();
+        return [
+            SELECT Id, Check_In__c, Check_Out__c, Working_Hours__c, Attendance_Status__c, Is_Check_In_Done__c, Is_Check_Out_Done__c, Attendance_Date__c
+            FROM Attendance__c
+            WHERE Id = :att.Id
+        ];
     }
 
     // ── Update Leave Status ───────────────────────────────────────────────────
@@ -748,5 +648,21 @@ public without sharing class HRMSDashboardController {
         ];
 
         return wis.isEmpty() ? null : wis[0].Id;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HELPER METHODS
+    // ═══════════════════════════════════════════════════════════════════════
+    private static Employee__c getCurrentEmployee() {
+        try {
+            Id userId = UserInfo.getUserId();
+            List<Employee__c> emps = [
+                SELECT Id, User_Type__c, Department__c, Team__c
+                FROM Employee__c WHERE User__c = :userId AND Status__c = 'Active' LIMIT 1
+            ];
+            return emps.isEmpty() ? null : emps[0];
+        } catch (Exception e) {
+            throw new AuraHandledException('Could not retrieve current employee: ' + e.getMessage());
+        }
     }
 }

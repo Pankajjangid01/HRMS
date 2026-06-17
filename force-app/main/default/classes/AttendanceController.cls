@@ -1,4 +1,4 @@
-public with sharing class AttendanceController {
+public without sharing class AttendanceController {
 
     // Get Today Attendance
     @AuraEnabled(cacheable=false)

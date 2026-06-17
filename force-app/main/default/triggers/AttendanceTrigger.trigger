@@ -1,4 +1,4 @@
-trigger LeaveRequestTrigger on Leave_Request__c (before insert, before update, after insert, after update) {
+trigger AttendanceTrigger on Attendance__c (before insert, after insert, after update) {
 
     // ── BEFORE INSERT: Change Owner to Internal User (Head HR) ───────────────
     if (Trigger.isBefore && Trigger.isInsert) {
@@ -9,34 +9,30 @@ trigger LeaveRequestTrigger on Leave_Request__c (before insert, before update, a
         ];
         if (!headHR.isEmpty()) {
             Id internalOwnerId = headHR[0].User__c;
-            for (Leave_Request__c lr : Trigger.new) {
+            for (Attendance__c att : Trigger.new) {
                 if (UserInfo.getUserType() != 'Standard') {
-                    lr.OwnerId = internalOwnerId;
+                    att.OwnerId = internalOwnerId;
                 }
             }
         }
-    }
-
-    if (Trigger.isBefore && Trigger.isUpdate) {
-        LeaveRequestTriggerHandler.updateLeaveBalance(Trigger.new, Trigger.oldMap);
     }
 
     // ── AFTER INSERT / UPDATE: Unified Platform Event Sharing ─────────────────────────
     if (Trigger.isAfter) {
         List<Sharing_Event__e> eventsToPublish = new List<Sharing_Event__e>();
         
-        for (Leave_Request__c lr : Trigger.new) {
+        for (Attendance__c att : Trigger.new) {
             Boolean needsSharing = false;
             
             if (Trigger.isInsert) {
                 needsSharing = true;
             } else if (Trigger.isUpdate) {
-                Leave_Request__c old = Trigger.oldMap.get(lr.Id);
-                if (lr.Employee__c != old.Employee__c || lr.OwnerId != old.OwnerId) 
+                Attendance__c old = Trigger.oldMap.get(att.Id);
+                if (att.Employee__c != old.Employee__c || att.OwnerId != old.OwnerId) 
                     needsSharing = true;
             }
             
-            if (needsSharing) eventsToPublish.add(new Sharing_Event__e(Record_Id__c = lr.Id, Object_Type__c = 'LeaveRequest'));
+            if (needsSharing) eventsToPublish.add(new Sharing_Event__e(Record_Id__c = att.Id, Object_Type__c = 'Attendance'));
         }
         
         if (!eventsToPublish.isEmpty()) {
